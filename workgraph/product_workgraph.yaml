@@ -1,0 +1,598 @@
+workgraph:
+  id: wg-workgraph-product-v0.1
+  name: WorkGraph 产品可推理工作图谱
+  version: v0.1
+  status: draft
+  created_at: 2026-06-19
+  principle:
+    primary_artifact: reasonable_work_graph
+    derived_artifacts:
+      - docs/MRD.md
+      - docs/PRD.md
+      - workgraph/interaction_design.yaml
+      - docs/InteractionDesign.md
+      - workgraph/wireframe_design.yaml
+      - docs/Wireframes.md
+    statement: "产品主产物不是文档，而是可推理工作图谱；文档只是图谱的阅读视图、导出快照或汇报格式。"
+
+nodes:
+  - id: intent-001
+    type: raw_intent
+    title: 构建人和 Agent 共同协作的新办公模式
+    content: "从目标出发，按逻辑拆解成充分条件和任务，由 Agent 执行并回填证据，形成可推理、可执行、可验收的办公系统。"
+    source: conversation
+    confidence: high
+
+  - id: thesis-001
+    type: product_thesis
+    title: 文档不应是核心产物
+    content: "Agent 时代的办公系统不应以大段自然语言文档作为最终工作载体，而应以可推理工作图谱作为组织工作的第一性对象。"
+    confidence: high
+
+  - id: thesis-002
+    type: product_thesis
+    title: 推理过程是可复盘和可校准的 f(x)
+    content: "推理办公的核心不是沉淀静态文档，而是记录每次 f(x)：x 是当时获得的信息，f(x) 是从信息到阶段结论的推理过程，y 是阶段性推理产物或行动结论。系统记录每次推理过程，复盘时校准的是这条推理链本身。"
+    confidence: high
+
+  - id: product-001
+    type: product_definition
+    title: WorkGraph
+    content: "以目标为根的人-Agent 协作办公系统，将管理者战略意图转化为目标、小目标、任务、证据、验收和反馈构成的可推理工作图谱。"
+    confidence: high
+
+  - id: market-001
+    type: market_observation
+    title: 传统办公工具断裂
+    content: "聊天承载讨论但状态不可追踪；文档承载说明但不可执行；项目管理承载任务但缺少目标和决策上下文。"
+    confidence: high
+
+  - id: market-002
+    type: market_opportunity
+    title: 从 AI 助手到 AI 工作系统
+    content: "企业需要的不是更会聊天的 AI，而是能够承载目标理解、拆解、执行、证据和验收的组织级工作系统。"
+    confidence: high
+
+  - id: user-001
+    type: user_role
+    title: CEO / 最终决策者
+    content: "提出战略目标，确认目标理解、小目标拆解和重大偏差。"
+    confidence: high
+
+  - id: user-002
+    type: user_role
+    title: 目标负责人
+    content: "承接目标，补充约束和资源，确认非公司级小目标，处理执行阻塞。"
+    confidence: high
+
+  - id: user-003
+    type: user_role
+    title: 专项 Agent
+    content: "参与目标理解、提出假设和风险、执行任务、回填证据和异常。"
+    confidence: high
+
+  - id: layer-001
+    type: product_layer
+    title: 目标决策层
+    content: "负责意图理解、目标澄清、假设约束、小目标拆解和人类确认。"
+    confidence: high
+
+  - id: layer-002
+    type: product_layer
+    title: 任务执行层
+    content: "负责任务生成、Agent 调度、执行推进、证据回填、验收判断和异常回流。"
+    confidence: high
+
+  - id: internal-001
+    type: internal_mechanism
+    title: 隐性推理
+    content: "承载自然语言、直觉、类比、偏好和模糊判断，是推理的前结构形态。"
+    confidence: high
+
+  - id: internal-002
+    type: internal_mechanism
+    title: 显性推理
+    content: "沉淀目标、假设、约束、充分条件、小目标和决策理由。"
+    confidence: high
+
+  - id: internal-003
+    type: internal_mechanism
+    title: 可执行推理
+    content: "生成任务、依赖、状态、工具调用、证据和验收。"
+    confidence: high
+
+  - id: gate-001
+    type: approval_gate
+    title: 目标确认门
+    content: "CEO 确认系统对战略意图的理解，未确认目标不能进入正式执行。"
+    confidence: high
+
+  - id: gate-002
+    type: approval_gate
+    title: 小目标确认门
+    content: "CEO 或目标负责人确认小目标拆解路径是否符合战略意图。"
+    confidence: high
+
+  - id: gate-003
+    type: approval_gate
+    title: 重大偏差确认门
+    content: "执行中出现目标不可达、假设被推翻、资源不足或合规风险时，回流目标决策层。"
+    confidence: high
+
+  - id: object-001
+    type: graph_node_type
+    title: 原始意图
+    content: "保存人类自然语言表达，是图谱的来源节点，不是最终产物。"
+    confidence: high
+
+  - id: object-002
+    type: graph_node_type
+    title: 目标
+    content: "经确认的组织意图，包含对象、指标、时间、范围、约束和成功标准。"
+    confidence: high
+
+  - id: object-003
+    type: graph_node_type
+    title: 假设
+    content: "目标拆解依赖但尚未完全验证的前提。"
+    confidence: high
+
+  - id: object-004
+    type: graph_node_type
+    title: 约束
+    content: "执行过程中不可违反的条件，如预算、时间、合规、品牌、安全和资源上限。"
+    confidence: high
+
+  - id: object-005
+    type: graph_node_type
+    title: 小目标
+    content: "支撑总目标达成的阶段性目标或充分条件。"
+    confidence: high
+
+  - id: object-006
+    type: graph_node_type
+    title: 任务
+    content: "为达成小目标而生成的可执行单元，包含责任方、依赖、状态、验收标准和证据要求。"
+    confidence: high
+
+  - id: object-007
+    type: graph_node_type
+    title: 证据
+    content: "证明任务完成或目标推进的材料，可以是数据、文件、系统日志、链接、用户确认或实验结果。"
+    confidence: high
+
+  - id: object-008
+    type: graph_node_type
+    title: 验收
+    content: "基于标准和证据判断任务、小目标或目标是否达成。"
+    confidence: high
+
+  - id: object-009
+    type: graph_node_type
+    title: 异常
+    content: "执行过程中出现的阻塞、偏差、假设失效、资源不足或风险事件。"
+    confidence: high
+
+  - id: object-010
+    type: graph_node_type
+    title: 推理过程
+    content: "记录一次 f(x) 的展开过程：如何选择输入、如何识别前提、如何比较证据、如何处理约束、如何形成阶段结论。"
+    confidence: high
+
+  - id: object-011
+    type: graph_node_type
+    title: 信息输入
+    content: "记录某次推理或决策时系统已知的信息，即 x，包括数据、证据、背景、约束、假设和上下文。"
+    confidence: high
+
+  - id: object-012
+    type: graph_node_type
+    title: 推理记录
+    content: "记录一次 f(x) 推理过程，包括输入信息、推理步骤、关键前提、证据权重、阶段结论、置信度、责任主体和后验反馈。"
+    confidence: high
+
+  - id: relation-001
+    type: graph_relation_type
+    title: derives_from
+    content: "表示一个节点从另一个节点推导或生成。"
+    confidence: high
+
+  - id: relation-002
+    type: graph_relation_type
+    title: supports
+    content: "表示小目标、任务或证据支撑上级目标。"
+    confidence: high
+
+  - id: relation-003
+    type: graph_relation_type
+    title: depends_on
+    content: "表示任务、目标或决策之间存在依赖。"
+    confidence: high
+
+  - id: relation-004
+    type: graph_relation_type
+    title: proves
+    content: "表示证据证明任务、小目标或目标的完成状态。"
+    confidence: high
+
+  - id: relation-005
+    type: graph_relation_type
+    title: approves
+    content: "表示确认门对目标、小目标或偏差处理方案的批准关系。"
+    confidence: high
+
+  - id: relation-006
+    type: graph_relation_type
+    title: impacts
+    content: "表示异常、风险或变更对目标、任务和执行路径的影响。"
+    confidence: high
+
+  - id: flow-001
+    type: workflow
+    title: 战略目标落地主流程
+    content: "CEO 输入战略意图 -> Agent 理解目标 -> 多 Agent 讨论 -> CEO 确认目标 -> Agent 拆解小目标 -> CEO 或目标负责人确认小目标 -> Agent 生成任务图 -> Agent / 人执行任务 -> 回填证据 -> 验收 -> 异常回流或目标达成。"
+    confidence: high
+
+  - id: requirement-001
+    type: product_requirement
+    title: 目标创建
+    content: "支持自然语言输入目标，上传背景材料，抽取市场、指标、目标值、时间周期、业务范围、约束和负责人。"
+    confidence: high
+
+  - id: requirement-002
+    type: product_requirement
+    title: 目标理解与澄清
+    content: "多 Agent 对目标进行分析，生成澄清问题、隐含假设、冲突约束和目标理解稿。"
+    confidence: high
+
+  - id: requirement-003
+    type: product_requirement
+    title: 小目标拆解
+    content: "基于目标、假设和约束生成小目标树，并说明每个小目标如何支撑总目标。"
+    confidence: high
+
+  - id: requirement-004
+    type: product_requirement
+    title: 任务生成
+    content: "基于确认后的小目标生成任务列表、依赖关系、责任方、验收标准和证据要求。"
+    confidence: high
+
+  - id: requirement-005
+    type: product_requirement
+    title: Agent 调度与执行
+    content: "将任务分配给 Agent 或人类角色，支持工具调用、状态更新、执行日志和人工介入请求。"
+    confidence: high
+
+  - id: requirement-006
+    type: product_requirement
+    title: 证据回填
+    content: "支持 Agent 或人工上传证据，并将证据关联到任务、小目标和目标。"
+    confidence: high
+
+  - id: requirement-007
+    type: product_requirement
+    title: 验收判断
+    content: "根据验收标准和证据判断任务、小目标或目标是否达成。"
+    confidence: high
+
+  - id: requirement-008
+    type: product_requirement
+    title: 异常回流
+    content: "识别重大偏差并回流目标决策层，生成偏差报告和决策选项。"
+    confidence: high
+
+  - id: requirement-009
+    type: product_requirement
+    title: 推理记录与推理过程校准
+    content: "系统记录关键推理的输入信息 x、推理过程 f(x)、阶段结论 y、证据和后验反馈，用于复盘每条推理链路中哪些信息有效、哪些前提失真、哪些推理步骤需要调整。"
+    confidence: high
+
+  - id: artifact-001
+    type: derived_artifact
+    title: MRD 阅读视图
+    content: "面向市场、商业和定位的阅读视图，由产品工作图谱导出。"
+    uri: docs/MRD.md
+    confidence: high
+
+  - id: artifact-002
+    type: derived_artifact
+    title: PRD 阅读视图
+    content: "面向需求、流程和功能定义的阅读视图，由产品工作图谱导出。"
+    uri: docs/PRD.md
+    confidence: high
+
+  - id: artifact-003
+    type: derived_graph
+    title: 交互设计图谱
+    content: "面向产品交互设计的可推理图谱，包含页面、状态、操作、Agent 行为和协作模拟。"
+    uri: workgraph/interaction_design.yaml
+    confidence: high
+
+  - id: artifact-004
+    type: derived_artifact
+    title: 交互设计阅读视图
+    content: "面向人类评审的交互设计草稿，由交互设计图谱导出。"
+    uri: docs/InteractionDesign.md
+    confidence: high
+
+  - id: artifact-005
+    type: derived_graph
+    title: 低保真线框图设计图谱
+    content: "面向 MVP 原型的页面结构图谱，包含页面布局、字段、按钮、状态、空态和异常态。"
+    uri: workgraph/wireframe_design.yaml
+    confidence: high
+
+  - id: artifact-006
+    type: derived_artifact
+    title: 低保真线框图阅读视图
+    content: "面向人类评审的 MVP 低保真线框图说明，由线框图设计图谱导出。"
+    uri: docs/Wireframes.md
+    confidence: high
+
+edges:
+  - id: edge-001
+    source: intent-001
+    target: thesis-001
+    relation: derives_from
+    confidence: high
+
+  - id: edge-002
+    source: thesis-001
+    target: product-001
+    relation: supports
+    confidence: high
+
+  - id: edge-002b
+    source: thesis-002
+    target: product-001
+    relation: supports
+    confidence: high
+
+  - id: edge-003
+    source: market-001
+    target: market-002
+    relation: supports
+    confidence: high
+
+  - id: edge-004
+    source: market-002
+    target: product-001
+    relation: supports
+    confidence: high
+
+  - id: edge-005
+    source: product-001
+    target: layer-001
+    relation: decomposes_into
+    confidence: high
+
+  - id: edge-006
+    source: product-001
+    target: layer-002
+    relation: decomposes_into
+    confidence: high
+
+  - id: edge-007
+    source: internal-001
+    target: layer-001
+    relation: implemented_within
+    confidence: high
+
+  - id: edge-008
+    source: internal-002
+    target: layer-001
+    relation: implemented_within
+    confidence: high
+
+  - id: edge-009
+    source: internal-003
+    target: layer-002
+    relation: implemented_within
+    confidence: high
+
+  - id: edge-010
+    source: gate-001
+    target: layer-001
+    relation: governs
+    confidence: high
+
+  - id: edge-011
+    source: gate-002
+    target: layer-001
+    relation: governs
+    confidence: high
+
+  - id: edge-012
+    source: gate-003
+    target: layer-002
+    relation: governs
+    confidence: high
+
+  - id: edge-013
+    source: object-001
+    target: object-002
+    relation: derives_from
+    confidence: high
+
+  - id: edge-014
+    source: object-002
+    target: object-005
+    relation: decomposes_into
+    confidence: high
+
+  - id: edge-015
+    source: object-005
+    target: object-006
+    relation: decomposes_into
+    confidence: high
+
+  - id: edge-016
+    source: object-006
+    target: object-007
+    relation: requires
+    confidence: high
+
+  - id: edge-017
+    source: object-007
+    target: object-008
+    relation: proves
+    confidence: high
+
+  - id: edge-018
+    source: object-009
+    target: gate-003
+    relation: triggers
+    confidence: high
+
+  - id: edge-018b
+    source: object-011
+    target: object-012
+    relation: input_to
+    confidence: high
+
+  - id: edge-018c
+    source: object-010
+    target: object-012
+    relation: used_by
+    confidence: high
+
+  - id: edge-019
+    source: user-001
+    target: gate-001
+    relation: approves
+    confidence: high
+
+  - id: edge-020
+    source: user-001
+    target: gate-002
+    relation: approves
+    confidence: medium
+
+  - id: edge-021
+    source: user-002
+    target: gate-002
+    relation: approves
+    confidence: high
+
+  - id: edge-022
+    source: user-003
+    target: requirement-005
+    relation: executes
+    confidence: high
+
+  - id: edge-023
+    source: flow-001
+    target: requirement-001
+    relation: includes
+    confidence: high
+
+  - id: edge-024
+    source: flow-001
+    target: requirement-002
+    relation: includes
+    confidence: high
+
+  - id: edge-025
+    source: flow-001
+    target: requirement-003
+    relation: includes
+    confidence: high
+
+  - id: edge-026
+    source: flow-001
+    target: requirement-004
+    relation: includes
+    confidence: high
+
+  - id: edge-027
+    source: flow-001
+    target: requirement-005
+    relation: includes
+    confidence: high
+
+  - id: edge-028
+    source: flow-001
+    target: requirement-006
+    relation: includes
+    confidence: high
+
+  - id: edge-029
+    source: flow-001
+    target: requirement-007
+    relation: includes
+    confidence: high
+
+  - id: edge-030
+    source: flow-001
+    target: requirement-008
+    relation: includes
+    confidence: high
+
+  - id: edge-030b
+    source: flow-001
+    target: requirement-009
+    relation: includes
+    confidence: high
+
+  - id: edge-031
+    source: product-001
+    target: artifact-001
+    relation: exports_to
+    confidence: high
+
+  - id: edge-032
+    source: product-001
+    target: artifact-002
+    relation: exports_to
+    confidence: high
+
+  - id: edge-033
+    source: product-001
+    target: artifact-003
+    relation: derives
+    confidence: high
+
+  - id: edge-034
+    source: artifact-003
+    target: artifact-004
+    relation: exports_to
+    confidence: high
+
+  - id: edge-035
+    source: artifact-003
+    target: artifact-005
+    relation: derives
+    confidence: high
+
+  - id: edge-036
+    source: artifact-005
+    target: artifact-006
+    relation: exports_to
+    confidence: high
+
+acceptance_criteria:
+  - id: ac-001
+    description: "任何产品需求必须能追溯到目标、市场机会或产品原则。"
+    related_nodes:
+      - product-001
+      - thesis-001
+
+  - id: ac-002
+    description: "MRD 和 PRD 必须被视为图谱导出视图，不得作为主事实源。"
+    related_nodes:
+      - artifact-001
+      - artifact-002
+
+  - id: ac-003
+    description: "新增需求必须以节点和关系形式进入图谱，再按需导出为文档。"
+    related_nodes:
+      - thesis-001
+      - product-001
+
+  - id: ac-004
+    description: "关键推理必须记录 f(x)：输入信息、推理过程、阶段结论和后验反馈都应可追溯。"
+    related_nodes:
+      - thesis-002
+      - object-010
+      - object-011
+      - object-012

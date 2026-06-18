@@ -1,0 +1,488 @@
+interaction_graph:
+  id: wg-interaction-design-v0.1
+  name: WorkGraph 产品交互设计图谱
+  version: v0.1
+  status: draft
+  created_at: 2026-06-19
+  source_graph: workgraph/product_workgraph.yaml
+  principle:
+    primary_artifact: interaction_graph
+    derived_artifacts:
+      - docs/InteractionDesign.md
+    statement: "交互设计的主产物不是原型说明文档，而是由用户意图、界面状态、图谱节点、操作、Agent 行为和确认门构成的交互图谱。"
+
+design_thesis:
+  - id: ix-thesis-001
+    type: design_thesis
+    title: 用户不是在写文档，而是在塑造图谱
+    content: "用户的每一次输入、确认、修改、驳回、追问和验收，都应该落到工作图谱的节点或关系变化上。"
+
+  - id: ix-thesis-002
+    type: design_thesis
+    title: Agent 不是聊天对象，而是图谱维护者和执行者
+    content: "Agent 的默认输出不应是长文本回答，而应是对图谱的候选修改、证据补充、风险标记或任务执行结果。"
+
+  - id: ix-thesis-003
+    type: design_thesis
+    title: 人类负责承诺，Agent 负责展开
+    content: "人类在确认门上做承诺性判断；Agent 在确认门之间负责理解、拆解、执行、回填和提醒。"
+
+  - id: ix-thesis-004
+    type: design_thesis
+    title: 每次关键推理都要记录 f(x)
+    content: "交互中所有目标理解、小目标拆解、任务生成、异常处理和验收判断，都应记录输入信息 x、推理过程 f(x)、阶段结论 y，便于复盘和校准推理过程。"
+
+product_shell:
+  - id: shell-001
+    type: navigation
+    title: 左侧目标导航
+    content: "按公司目标、事业部目标、项目目标组织工作图谱入口。"
+
+  - id: shell-002
+    type: navigation
+    title: 顶部模式切换
+    content: "在战略板、图谱视图、行动板、证据库、复盘视图之间切换。"
+
+  - id: shell-003
+    type: assistant_surface
+    title: Agent 协作侧栏
+    content: "展示 Agent 正在做什么、提出了哪些候选修改、需要人类确认什么。"
+
+  - id: shell-004
+    type: status_surface
+    title: 确认门状态条
+    content: "展示当前目标处于意图澄清、目标待确认、小目标待确认、执行中、异常待决策或已验收状态。"
+
+  - id: shell-005
+    type: reasoning_surface
+    title: 推理记录抽屉
+    content: "在关键确认和验收动作旁展示 f(x)：本次推理使用了哪些信息 x、经历了什么推理过程、形成了什么阶段结论 y。"
+
+screens:
+  - id: screen-001
+    type: screen
+    title: 目标入口页
+    purpose: "接收管理者的原始战略意图，并创建原始意图节点。"
+    primary_user: CEO
+    main_objects:
+      - raw_intent
+      - background_material
+    core_interactions:
+      - 输入自然语言目标
+      - 上传背景材料
+      - 选择参与 Agent
+      - 启动目标理解
+    graph_mutations:
+      - create_node: raw_intent
+      - create_node: background_material
+      - create_edge: derives_from
+
+  - id: screen-002
+    type: screen
+    title: 目标理解工作台
+    purpose: "让 Agent 将原始意图展开为目标草案、假设、约束和待确认问题。"
+    primary_user: CEO
+    main_objects:
+      - raw_intent
+      - goal_draft
+      - assumption
+      - constraint
+      - open_question
+    core_interactions:
+      - 查看 Agent 分析摘要
+      - 回答澄清问题
+      - 修改目标字段
+      - 标记关键约束
+      - 提交目标确认
+    graph_mutations:
+      - create_node: goal_draft
+      - create_node: assumption
+      - create_node: constraint
+      - create_node: open_question
+      - create_edge: derives_from
+      - create_edge: constrains
+
+  - id: screen-003
+    type: screen
+    title: 目标确认页
+    purpose: "把目标草案升级为经 CEO 承诺的目标版本。"
+    primary_user: CEO
+    main_objects:
+      - goal_draft
+      - goal
+      - approval_record
+      - reasoning_record
+    core_interactions:
+      - 对比原始意图和结构化目标
+      - 查看关键假设和风险
+      - 确认目标
+      - 驳回并要求 Agent 重新澄清
+      - 生成目标版本
+    graph_mutations:
+      - update_node: goal
+      - create_node: approval_record
+      - create_node: reasoning_record
+      - create_edge: approves
+      - create_edge: revises
+
+  - id: screen-004
+    type: screen
+    title: 小目标拆解页
+    purpose: "将确认后的目标拆成支撑目标达成的充分条件和阶段性小目标。"
+    primary_user: CEO / 目标负责人
+    main_objects:
+      - goal
+      - sub_goal
+      - support_logic
+      - risk
+      - reasoning_record
+    core_interactions:
+      - 查看 Agent 拆解方案
+      - 切换拆解视角
+      - 对比多个拆解方案
+      - 调整小目标
+      - 确认关键小目标
+    graph_mutations:
+      - create_node: sub_goal
+      - create_node: risk
+      - create_node: reasoning_record
+      - create_edge: supports
+      - create_edge: depends_on
+
+  - id: screen-005
+    type: screen
+    title: 工作图谱视图
+    purpose: "展示从目标到任务、证据、验收和异常的完整可推理结构。"
+    primary_user: CEO / 目标负责人 / PMO
+    main_objects:
+      - goal
+      - assumption
+      - constraint
+      - sub_goal
+      - task
+      - evidence
+      - exception
+    core_interactions:
+      - 查看节点关系
+      - 展开支撑链路
+      - 查看风险路径
+      - 从节点进入详情
+      - 生成阅读快照
+    graph_mutations:
+      - update_edge: supports
+      - update_edge: depends_on
+      - create_snapshot: report
+
+  - id: screen-006
+    type: screen
+    title: 行动板
+    purpose: "承载任务生成、调度、状态推进和阻塞处理。"
+    primary_user: 目标负责人 / Agent 编排者
+    main_objects:
+      - task
+      - dependency
+      - owner
+      - status
+    core_interactions:
+      - 从小目标生成任务
+      - 分配 Agent 或人类负责人
+      - 查看任务依赖
+      - 处理阻塞
+      - 调整优先级
+    graph_mutations:
+      - create_node: task
+      - create_edge: supports
+      - create_edge: depends_on
+      - update_node: task_status
+
+  - id: screen-007
+    type: screen
+    title: 任务执行页
+    purpose: "展示单个任务的输入、执行过程、输出、证据和验收状态。"
+    primary_user: Agent / 执行者 / 目标负责人
+    main_objects:
+      - task
+      - execution_log
+      - evidence
+      - acceptance
+    core_interactions:
+      - 查看任务目标链路
+      - 启动 Agent 执行
+      - 上传或生成证据
+      - 请求人工介入
+      - 提交验收
+    graph_mutations:
+      - create_node: execution_log
+      - create_node: evidence
+      - create_edge: proves
+      - update_node: task_status
+
+  - id: screen-008
+    type: screen
+    title: 重大偏差处理页
+    purpose: "当执行结果推翻目标假设或影响目标达成时，回流决策层。"
+    primary_user: CEO / 目标负责人
+    main_objects:
+      - exception
+      - impacted_goal
+      - impacted_sub_goal
+      - decision_option
+      - reasoning_record
+    core_interactions:
+      - 查看偏差报告
+      - 查看影响范围
+      - 选择处理方案
+      - 修改目标或小目标
+      - 确认继续执行
+    graph_mutations:
+      - create_node: exception
+      - create_node: decision_record
+      - create_node: reasoning_record
+      - create_edge: impacts
+      - create_edge: revises
+      - create_edge: approves
+
+  - id: screen-009
+    type: screen
+    title: 复盘视图
+    purpose: "从图谱生成目标复盘，区分事实、判断、假设和建议。"
+    primary_user: CEO / 目标负责人
+    main_objects:
+      - goal
+      - task
+      - evidence
+      - decision_record
+      - retrospective_snapshot
+    core_interactions:
+      - 生成复盘快照
+      - 查看假设成立情况
+      - 查看任务完成证据
+      - 沉淀下一轮目标建议
+    graph_mutations:
+      - create_snapshot: retrospective
+      - create_node: next_cycle_recommendation
+
+state_machine:
+  - id: state-001
+    object: goal
+    states:
+      - raw_intent_created
+      - understanding_in_progress
+      - goal_pending_approval
+      - goal_approved
+      - sub_goals_pending_approval
+      - execution_ready
+      - executing
+      - exception_pending_decision
+      - achieved
+      - archived
+
+  - id: state-002
+    object: task
+    states:
+      - pending
+      - assigned
+      - running
+      - blocked
+      - evidence_pending
+      - acceptance_pending
+      - done
+      - rejected
+
+agent_behaviors:
+  - id: agent-behavior-001
+    title: 候选修改而非直接覆盖
+    rule: "Agent 对目标、小目标、任务和验收的修改默认生成候选变更，等待有权限的人类确认。"
+
+  - id: agent-behavior-002
+    title: 输出必须落图谱
+    rule: "Agent 输出必须转化为节点、关系、证据、风险或决策选项，不允许只输出长文本建议。"
+
+  - id: agent-behavior-003
+    title: 不确定性显式化
+    rule: "Agent 对低置信度判断必须创建假设、风险或待确认问题节点。"
+
+  - id: agent-behavior-004
+    title: 执行必须有证据
+    rule: "Agent 标记任务完成前必须回填证据，并说明证据如何证明任务完成。"
+
+collaboration_simulation:
+  scenario:
+    id: sim-001
+    title: CEO 提出东南亚市场 1 亿营业额目标
+    raw_intent: "我们要在东南亚市场拿下 1 亿营业额。"
+
+  steps:
+    - id: sim-step-001
+      actor: CEO
+      action: 输入原始战略意图
+      human_expression: "我们要在东南亚市场拿下 1 亿营业额。"
+      graph_effect:
+        - create_node: raw_intent
+      next_agent_action: "目标理解 Agent 开始识别缺失字段。"
+
+    - id: sim-step-002
+      actor: GoalUnderstandingAgent
+      action: 生成澄清问题
+      agent_output:
+        - "1 亿营业额的币种是什么？"
+        - "时间周期是本财年、未来 12 个月还是某个季度？"
+        - "东南亚市场包含哪些国家？"
+        - "营业额口径是 GMV、收入还是回款？"
+        - "是否包含既有客户续费？"
+      graph_effect:
+        - create_node: open_question
+        - create_node: assumption
+
+    - id: sim-step-003
+      actor: CEO
+      action: 回答关键问题
+      human_expression: "目标是未来 12 个月，美元收入，覆盖印尼、泰国、越南，只计算新签收入。"
+      graph_effect:
+        - update_node: goal_draft
+        - resolve_node: open_question
+
+    - id: sim-step-004
+      actor: MultiAgentPanel
+      action: 多 Agent 讨论目标可行性
+      agent_outputs:
+        market_agent: "印尼可能是主战场，泰国适合渠道合作，越南需要产品本地化。"
+        sales_agent: "需要拆成线索、商机、转化率、客单价和回款周期。"
+        finance_agent: "需要明确收入确认和预算约束。"
+        legal_agent: "数据合规和本地合同模板是前置风险。"
+      graph_effect:
+        - create_node: assumption
+        - create_node: constraint
+        - create_node: risk
+        - create_edge: impacts
+
+    - id: sim-step-005
+      actor: System
+      action: 生成目标确认稿
+      structured_goal:
+        metric: 新签美元收入
+        target_value: 100000000
+        time_range: 未来 12 个月
+        market_scope:
+          - 印尼
+          - 泰国
+          - 越南
+        constraints:
+          - 合规通过后才能规模化获客
+          - 预算需在后续确认
+        success_criteria:
+          - 12 个月累计新签收入达到 1 亿美元
+          - 每个国家有可追踪销售漏斗
+      graph_effect:
+        - create_node: goal_draft
+
+    - id: sim-step-006
+      actor: CEO
+      action: 通过目标确认门
+      human_expression: "确认这个目标版本。预算上限先按 1500 万美元建模。"
+      graph_effect:
+        - create_node: approval_record
+        - update_node: goal
+        - create_edge: approves
+
+    - id: sim-step-007
+      actor: PlanningAgents
+      action: 拆解小目标
+      sub_goals:
+        - "建立三国市场进入策略"
+        - "形成可规模化获客渠道"
+        - "完成本地化产品与合规准备"
+        - "建立销售漏斗并达成阶段收入"
+        - "建立交付和客户成功能力"
+      graph_effect:
+        - create_node: sub_goal
+        - create_edge: supports
+
+    - id: sim-step-008
+      actor: CEO
+      action: 确认小目标拆解
+      human_expression: "先确认，但印尼权重提高，泰国以渠道试点，越南先做产品适配。"
+      graph_effect:
+        - update_node: sub_goal
+        - create_node: approval_record
+        - create_edge: approves
+
+    - id: sim-step-009
+      actor: ExecutionAgents
+      action: 生成任务图
+      tasks:
+        - "分析印尼目标客户和竞品定价"
+        - "筛选泰国渠道合作伙伴"
+        - "评估越南产品本地化缺口"
+        - "设计销售漏斗指标和看板"
+        - "制定 1500 万美元预算分配方案"
+      graph_effect:
+        - create_node: task
+        - create_edge: supports
+        - create_edge: depends_on
+
+    - id: sim-step-010
+      actor: Agent / Human
+      action: 执行任务并回填证据
+      evidence_examples:
+        - "市场分析报告链接"
+        - "渠道伙伴名单"
+        - "本地化需求清单"
+        - "销售漏斗 BI 看板"
+        - "预算模型表"
+      graph_effect:
+        - create_node: evidence
+        - create_edge: proves
+
+    - id: sim-step-011
+      actor: System
+      action: 发现重大偏差
+      exception: "越南合规周期预计超过 9 个月，影响 12 个月收入目标。"
+      graph_effect:
+        - create_node: exception
+        - create_edge: impacts
+      next_human_action: "触发重大偏差确认门，请 CEO 决策是否调整越南目标或资源投入。"
+
+    - id: sim-step-012
+      actor: CEO
+      action: 处理重大偏差
+      human_expression: "越南收入目标下调，资源转向印尼；越南保留产品适配和合规准备。"
+      graph_effect:
+        - create_node: decision_record
+        - update_node: sub_goal
+        - update_node: task
+        - create_edge: revises
+        - create_edge: approves
+
+open_questions:
+  - id: oq-001
+    question: "CEO 首次使用时应该看到空白输入框，还是看到行业目标模板？"
+    reason: "影响产品冷启动体验。"
+
+  - id: oq-002
+    question: "Agent 协作过程默认展示多少细节？"
+    reason: "过多像聊天，过少不可信。"
+
+  - id: oq-003
+    question: "图谱视图是主界面，还是战略板/行动板的底层可展开视图？"
+    reason: "影响产品复杂度和用户心智。"
+
+  - id: oq-004
+    question: "哪些任务允许 Agent 自动执行，哪些必须人工确认？"
+    reason: "影响权限、审计和企业信任。"
+
+acceptance_criteria:
+  - id: ix-ac-001
+    description: "用户输入目标后，系统必须创建原始意图节点，而不是只生成一段总结。"
+
+  - id: ix-ac-002
+    description: "目标确认前，系统必须展示目标字段、假设、约束、待确认问题和风险。"
+
+  - id: ix-ac-003
+    description: "小目标拆解必须展示支撑逻辑，不能只是任务列表。"
+
+  - id: ix-ac-004
+    description: "任务完成必须有证据节点支撑，不能只依赖状态字段。"
+
+  - id: ix-ac-005
+    description: "重大偏差必须回到目标决策层，不能只停留在行动板。"

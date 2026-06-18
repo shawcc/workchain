@@ -1,0 +1,342 @@
+wireframe_graph:
+  id: wg-wireframe-design-v0.1
+  name: WorkGraph MVP 低保真线框图设计图谱
+  version: v0.1
+  status: draft
+  created_at: 2026-06-19
+  source_graphs:
+    - workgraph/product_workgraph.yaml
+    - workgraph/interaction_design.yaml
+  principle:
+    primary_artifact: wireframe_graph
+    derived_artifacts:
+      - docs/Wireframes.md
+    statement: "低保真原型不是静态页面说明，而是页面、图谱对象、操作、状态、确认门和推理记录之间的结构化关系。"
+
+global_layout:
+  - id: layout-001
+    name: 三栏工作台
+    regions:
+      - left_goal_nav: "目标树、状态筛选、待确认入口"
+      - center_workspace: "当前页面主体，承载目标、图谱、任务或证据"
+      - right_agent_panel: "Agent 协作、候选变更、推理记录、待确认问题"
+    persistent_components:
+      - confirmation_gate_bar
+      - graph_breadcrumb
+      - reasoning_record_drawer
+
+components:
+  - id: component-001
+    name: 确认门状态条
+    purpose: "展示当前目标所在阶段和下一步确认动作。"
+    fields:
+      - current_state
+      - next_gate
+      - approver
+      - blocked_reason
+    actions:
+      - view_gate_detail
+      - approve
+      - reject
+      - request_clarification
+
+  - id: component-002
+    name: Agent 候选变更卡
+    purpose: "展示 Agent 建议新增、修改或删除的图谱节点和关系。"
+    fields:
+      - agent_name
+      - change_type
+      - target_node
+      - rationale
+      - confidence
+      - related_evidence
+    actions:
+      - accept_change
+      - edit_change
+      - reject_change
+      - ask_follow_up
+
+  - id: component-003
+    name: 推理记录抽屉
+    purpose: "展示 f(x) 的推理过程链路。"
+    fields:
+      - input_x
+      - reasoning_process_fx
+      - output_y
+      - confidence
+      - evidence
+      - retrospective_feedback
+    actions:
+      - expand_input
+      - compare_actual_outcome
+      - mark_function_issue
+      - suggest_function_update
+
+screens:
+  - id: wire-001
+    title: 目标入口页
+    route: /goals/new
+    purpose: "让 CEO 用自然语言创建目标，并把输入转化为原始意图节点。"
+    layout:
+      left:
+        - recent_goals
+        - goal_templates
+      center:
+        - hero_prompt: "你想让组织达成什么目标？"
+        - raw_intent_input
+        - background_upload
+        - target_type_selector
+        - start_understanding_button
+      right:
+        - recommended_agents
+        - examples
+        - graph_preview_empty_state
+    fields:
+      - raw_intent
+      - background_materials
+      - target_type
+      - selected_agents
+    primary_actions:
+      - start_goal_understanding
+    secondary_actions:
+      - use_template
+      - save_draft
+      - import_from_meeting
+    empty_state: "展示目标示例，但不展示空白文档。"
+    error_states:
+      - raw_intent_missing
+      - upload_failed
+      - no_agent_available
+    graph_mutations:
+      - create_raw_intent_node
+      - create_background_material_node
+      - create_derives_from_edge
+
+  - id: wire-002
+    title: 目标理解工作台
+    route: /goals/:goalId/understanding
+    purpose: "让 Agent 把原始意图展开为结构化目标草案、待确认问题、假设和约束。"
+    layout:
+      left:
+        - raw_intent_card
+        - background_materials
+        - graph_breadcrumb
+      center:
+        - goal_draft_form
+        - assumptions_table
+        - constraints_table
+        - open_questions_list
+        - success_criteria_editor
+      right:
+        - agent_analysis_stream
+        - candidate_change_cards
+        - reasoning_record_preview
+    fields:
+      - metric
+      - target_value
+      - market_scope
+      - time_range
+      - business_scope
+      - owner
+      - assumptions
+      - constraints
+      - open_questions
+      - success_criteria
+    primary_actions:
+      - submit_goal_for_approval
+    secondary_actions:
+      - answer_question
+      - accept_agent_change
+      - ask_agent_to_rethink
+      - save_draft
+    empty_state: "Agent 正在分析目标，页面显示已识别字段和缺失字段骨架。"
+    error_states:
+      - conflicting_constraints
+      - unresolved_required_questions
+      - low_confidence_goal_draft
+    graph_mutations:
+      - create_goal_draft_node
+      - create_assumption_node
+      - create_constraint_node
+      - create_open_question_node
+      - create_reasoning_record_node
+
+  - id: wire-003
+    title: 小目标拆解页
+    route: /goals/:goalId/sub-goals
+    purpose: "把确认后的目标拆成充分条件和阶段性小目标，并让负责人确认拆解路径。"
+    layout:
+      left:
+        - approved_goal_summary
+        - assumptions_and_constraints
+        - decomposition_modes
+      center:
+        - sub_goal_tree
+        - support_logic_panel
+        - decomposition_comparison
+      right:
+        - agent_rationale
+        - risk_list
+        - reasoning_record_drawer
+    fields:
+      - sub_goal_name
+      - support_logic
+      - metric
+      - target_value
+      - owner
+      - dependencies
+      - risks
+      - acceptance_criteria
+    primary_actions:
+      - approve_key_sub_goals
+    secondary_actions:
+      - switch_decomposition_mode
+      - regenerate_plan
+      - edit_sub_goal
+      - mark_key_sub_goal
+    empty_state: "展示目标节点和拆解方式选择，等待 Agent 生成小目标。"
+    error_states:
+      - unsupported_sub_goal
+      - circular_dependency
+      - high_risk_without_owner
+    graph_mutations:
+      - create_sub_goal_node
+      - create_supports_edge
+      - create_depends_on_edge
+      - create_reasoning_record_node
+
+  - id: wire-004
+    title: 工作图谱视图
+    route: /goals/:goalId/graph
+    purpose: "展示目标、假设、约束、小目标、任务、证据、异常和推理记录之间的关系。"
+    layout:
+      left:
+        - graph_filters
+        - node_type_legend
+        - saved_views
+      center:
+        - interactive_graph_canvas
+        - selected_path_highlight
+      right:
+        - selected_node_detail
+        - related_reasoning_records
+        - node_actions
+    fields:
+      - node_type
+      - node_status
+      - relation_type
+      - confidence
+      - owner
+      - version
+    primary_actions:
+      - expand_support_chain
+      - inspect_reasoning_record
+    secondary_actions:
+      - filter_by_node_type
+      - generate_snapshot
+      - compare_versions
+      - export_reading_view
+    empty_state: "创建目标后自动生成首个原始意图节点，引导用户开始目标理解。"
+    error_states:
+      - orphan_task
+      - missing_evidence
+      - stale_snapshot
+    graph_mutations:
+      - update_node
+      - update_edge
+      - create_snapshot
+
+  - id: wire-005
+    title: 行动板
+    route: /goals/:goalId/actions
+    purpose: "承载任务生成、分配、执行、证据回填和阻塞处理。"
+    layout:
+      left:
+        - sub_goal_filter
+        - owner_filter
+        - status_filter
+      center:
+        - task_board
+        - dependency_timeline
+        - blocked_tasks_panel
+      right:
+        - selected_task_detail
+        - evidence_requirements
+        - agent_execution_panel
+    fields:
+      - task_name
+      - supports_sub_goal
+      - owner
+      - status
+      - dependencies
+      - priority
+      - acceptance_criteria
+      - required_evidence
+    primary_actions:
+      - generate_tasks_from_sub_goals
+      - start_agent_execution
+      - submit_for_acceptance
+    secondary_actions:
+      - assign_owner
+      - upload_evidence
+      - mark_blocked
+      - escalate_exception
+    empty_state: "小目标确认后，提示从小目标生成任务图。"
+    error_states:
+      - task_without_sub_goal
+      - done_without_evidence
+      - blocked_without_reason
+      - exception_requires_decision
+    graph_mutations:
+      - create_task_node
+      - create_evidence_node
+      - create_proves_edge
+      - update_task_status
+      - create_exception_node
+
+user_agent_collaboration_pattern:
+  - id: collab-001
+    stage: 目标入口
+    human: "输入意图和背景。"
+    agent: "识别目标类型、建议参与 Agent、创建原始意图节点。"
+    graph: "raw_intent + background_material"
+
+  - id: collab-002
+    stage: 目标理解
+    human: "回答澄清问题，确认关键约束。"
+    agent: "生成目标草案、假设、约束和待确认问题。"
+    graph: "goal_draft + assumptions + constraints + open_questions + reasoning_record"
+
+  - id: collab-003
+    stage: 小目标拆解
+    human: "选择或调整拆解路径，确认关键小目标。"
+    agent: "生成多个拆解方案，解释支撑逻辑和风险。"
+    graph: "sub_goals + supports + depends_on + reasoning_record"
+
+  - id: collab-004
+    stage: 执行推进
+    human: "处理高风险、授权和异常。"
+    agent: "生成任务、执行任务、回填证据、标记阻塞。"
+    graph: "tasks + evidence + proves + exceptions"
+
+  - id: collab-005
+    stage: 复盘改进
+    human: "判断哪些推理过程做得好、哪些需要校准。"
+    agent: "对比推理过程和后验结果，提出 f(x) 链路的改进建议。"
+    graph: "reasoning_records + retrospective_feedback"
+
+acceptance_criteria:
+  - id: wf-ac-001
+    description: "MVP 页面不能以文档编辑器作为默认主界面。"
+
+  - id: wf-ac-002
+    description: "每个页面必须明确它会创建或更新哪些图谱节点和关系。"
+
+  - id: wf-ac-003
+    description: "目标确认、小目标确认和任务验收必须展示推理记录入口。"
+
+  - id: wf-ac-004
+    description: "行动板中的任务必须能追溯到小目标和总目标。"
+
+  - id: wf-ac-005
+    description: "标记完成的任务必须有证据节点支撑。"
