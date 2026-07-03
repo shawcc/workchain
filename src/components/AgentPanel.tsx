@@ -27,33 +27,33 @@ const agentUpdates = [
 
 export function AgentPanel() {
   return (
-    <aside className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto rounded-[32px] border border-white/10 bg-slate-950/60 p-4 backdrop-blur-xl">
-      <div>
-        <p className="text-xs uppercase tracking-[0.35em] text-cyan-100/50">RIGHT NOW</p>
-        <h2 className="mt-2 text-lg font-semibold text-white">待我处理</h2>
-        <p className="mt-2 text-xs leading-5 text-slate-400">这里只放需要用户判断、确认或重跑的事项。</p>
+    <aside className="flex h-full min-h-0 flex-col overflow-y-auto bg-white">
+      <div className="border-b border-slate-200 px-4 py-3">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Right Now</p>
+        <h2 className="mt-1 text-base font-semibold text-slate-950">待我处理</h2>
+        <p className="mt-1 text-xs leading-5 text-slate-500">只放需要判断、确认或重跑的事项。</p>
       </div>
 
-      <section className="rounded-[24px] border border-cyan-200/15 bg-cyan-200/10 p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-sm font-semibold text-cyan-50">
+      <section className="border-b border-slate-200">
+        <div className="flex items-center justify-between px-4 py-2.5">
+          <div className="flex items-center gap-2 text-sm font-semibold text-slate-900">
             <UserRound className="h-4 w-4" />
             需要你决策
           </div>
           <StatusPill>3 条</StatusPill>
         </div>
 
-        <div className="mt-4 space-y-3">
+        <div className="divide-y divide-slate-100">
           {decisions.map((item) => (
-            <article className="rounded-2xl border border-white/10 bg-slate-950/45 p-3" key={item.title}>
-              <h3 className="text-sm font-semibold text-white">{item.title}</h3>
-              <p className="mt-1 text-xs leading-5 text-slate-400">{item.detail}</p>
-              <div className="mt-3 flex gap-2">
-                <button className="inline-flex flex-1 items-center justify-center gap-1 rounded-xl bg-cyan-200 px-3 py-2 text-xs font-black text-slate-950 transition hover:bg-cyan-100">
+            <article className="px-4 py-3" key={item.title}>
+              <h3 className="text-sm font-medium text-slate-900">{item.title}</h3>
+              <p className="mt-1 text-xs leading-5 text-slate-500">{item.detail}</p>
+              <div className="mt-2 flex gap-2">
+                <button className="inline-flex flex-1 items-center justify-center gap-1 rounded-md bg-slate-900 px-2.5 py-1.5 text-xs font-medium text-white transition hover:bg-slate-800">
                   <Check className="h-3.5 w-3.5" />
                   {item.action}
                 </button>
-                <button className="inline-flex items-center justify-center gap-1 rounded-xl border border-white/10 px-3 py-2 text-xs font-black text-slate-200 transition hover:bg-white/10">
+                <button className="inline-flex items-center justify-center gap-1 rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50">
                   <RotateCcw className="h-3.5 w-3.5" />
                   Review
                 </button>
@@ -63,31 +63,31 @@ export function AgentPanel() {
         </div>
       </section>
 
-      <section className="rounded-[24px] border border-white/10 bg-white/[0.04] p-4">
-        <div className="flex items-center gap-2 text-sm font-semibold text-white">
-          <Bot className="h-4 w-4 text-cyan-200" />
+      <section className="border-b border-slate-200">
+        <div className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-slate-900">
+          <Bot className="h-4 w-4 text-slate-500" />
           Agent 动态
         </div>
 
-        <div className="mt-4 space-y-3">
+        <div className="divide-y divide-slate-100">
           {agentUpdates.map((item) => (
-            <div className="rounded-2xl bg-white/[0.04] p-3" key={item.text}>
+            <div className="px-4 py-3" key={item.text}>
               <div className="flex items-start justify-between gap-2">
-                <h3 className="text-sm font-semibold text-white">{item.agent}</h3>
-                <span className="rounded-full bg-white/10 px-2 py-1 text-[11px] font-bold text-cyan-100">{item.status}</span>
+                <h3 className="text-sm font-medium text-slate-900">{item.agent}</h3>
+                <span className="rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[11px] font-medium text-slate-500">{item.status}</span>
               </div>
-              <p className="mt-1 text-xs leading-5 text-slate-400">{item.text}</p>
+              <p className="mt-1 text-xs leading-5 text-slate-500">{item.text}</p>
             </div>
           ))}
         </div>
       </section>
 
-      <section className="rounded-[24px] border border-white/10 bg-slate-950/40 p-4">
-        <div className="flex items-center gap-2 text-sm font-semibold text-white">
-          <Clock3 className="h-4 w-4 text-cyan-200" />
+      <section className="px-4 py-3">
+        <div className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+          <Clock3 className="h-4 w-4 text-slate-500" />
           下一步
         </div>
-        <p className="mt-2 text-xs leading-5 text-slate-400">确认当前目标节点模型后，系统会生成下一级目标节点和行动清单。</p>
+        <p className="mt-1 text-xs leading-5 text-slate-500">确认当前目标节点模型后，系统会生成下一级目标节点和行动清单。</p>
       </section>
     </aside>
   );

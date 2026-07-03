@@ -9,21 +9,19 @@ const steps = [
 
 export function GateBar() {
   return (
-    <section className="rounded-[28px] border border-white/10 bg-white/[0.06] p-3 shadow-2xl shadow-cyan-950/20 backdrop-blur">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <section className="border-b border-slate-200 bg-white px-4 py-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <p className="text-xs uppercase tracking-[0.35em] text-cyan-100/50">CURRENT</p>
-          <h2 className="mt-1 text-sm font-semibold text-white">我的工作空间：图谱 · 关注 · 决策 · 知识</h2>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Current</p>
+          <h2 className="text-sm font-semibold text-slate-800">我的工作空间：图谱 · 关注 · 决策 · 知识</h2>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-1.5">
           {steps.map((step) => {
             const Icon = step.icon;
             return (
               <div
-                className={`flex items-center gap-2 rounded-2xl border px-3 py-2 text-xs transition ${
-                  step.active
-                    ? "border-cyan-300/30 bg-cyan-300/10 text-cyan-50"
-                    : "border-white/10 bg-white/[0.03] text-slate-400"
+                className={`flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs transition ${
+                  step.active ? "border-slate-300 bg-slate-100 text-slate-700" : "border-slate-200 bg-white text-slate-400"
                 }`}
                 key={step.label}
               >

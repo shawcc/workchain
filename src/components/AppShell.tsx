@@ -14,27 +14,24 @@ const navItems = [
 
 export function AppShell() {
   return (
-    <div className="min-h-screen overflow-hidden bg-[#071014] text-slate-100">
-      <div className="fixed inset-0 -z-10 bg-[radial-gradient(circle_at_20%_10%,rgba(52,211,153,0.22),transparent_30%),radial-gradient(circle_at_80%_0%,rgba(34,211,238,0.16),transparent_28%),linear-gradient(135deg,#071014_0%,#0c1d22_45%,#10130f_100%)]" />
-      <div className="noise fixed inset-0 -z-10 opacity-[0.18]" />
-
-      <main className="grid h-screen grid-cols-[260px_minmax(0,1fr)_360px] gap-4 p-4 max-xl:grid-cols-[220px_minmax(0,1fr)] max-xl:[&_.agent-shell]:hidden">
-        <aside className="flex min-h-0 flex-col rounded-[32px] border border-white/10 bg-white/[0.06] p-4 backdrop-blur-xl">
-          <div className="rounded-[24px] border border-cyan-200/20 bg-cyan-200/10 p-4">
-            <p className="text-xs uppercase tracking-[0.35em] text-cyan-100/60">FUTURE WORK</p>
-            <h1 className="mt-3 text-2xl font-semibold leading-tight text-white">设计未来办公系统</h1>
-            <p className="mt-3 text-xs leading-5 text-slate-300">我的可见空间 · 权限内图谱</p>
+    <div className="min-h-screen overflow-hidden bg-slate-100 text-slate-900">
+      <main className="grid h-screen grid-cols-[220px_minmax(0,1fr)_320px] gap-px bg-slate-200 max-xl:grid-cols-[200px_minmax(0,1fr)] max-xl:[&_.agent-shell]:hidden">
+        <aside className="flex min-h-0 flex-col bg-white">
+          <div className="border-b border-slate-200 px-4 py-3">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Future Work</p>
+            <h1 className="mt-1 truncate text-base font-semibold text-slate-950">设计未来办公系统</h1>
+            <p className="mt-1 text-xs text-slate-500">我的可见空间 · 权限内图谱</p>
           </div>
 
-          <nav className="mt-5 space-y-2">
+          <nav className="space-y-1 border-b border-slate-200 p-2">
             {navItems.map((item) => {
               const Icon = item.icon;
               return (
                 <NavLink
                   className={({ isActive }) =>
                     cn(
-                      "flex items-center gap-3 rounded-2xl px-3 py-3 text-sm transition",
-                      isActive ? "bg-cyan-200 text-slate-950 shadow-lg shadow-cyan-950/30" : "text-slate-300 hover:bg-white/10 hover:text-white",
+                      "flex items-center gap-2 rounded-md px-2.5 py-2 text-sm transition",
+                      isActive ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100 hover:text-slate-950",
                     )
                   }
                   key={item.path}
@@ -47,34 +44,36 @@ export function AppShell() {
             })}
           </nav>
 
-          <div className="mt-5 min-h-0 flex-1 overflow-y-auto rounded-[24px] border border-white/10 bg-slate-950/40 p-4">
-            <p className="text-xs uppercase tracking-[0.32em] text-cyan-100/50">GOAL NODES</p>
-            <h2 className="mt-2 text-lg font-semibold text-white">我的目标节点</h2>
-            <div className="mt-4 space-y-2">
+          <div className="min-h-0 flex-1 overflow-y-auto p-3">
+            <div className="mb-2 flex items-center justify-between">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Goal Nodes</p>
+              <span className="text-xs text-slate-400">3</span>
+            </div>
+            <div className="space-y-1">
               {["设计未来办公系统", "定义目标节点模型", "设计结构化推理体验"].map((item, index) => (
-                <div className="rounded-2xl bg-white/[0.04] px-3 py-3" key={item}>
+                <div className="rounded-md border border-slate-200 bg-white px-2.5 py-2 hover:bg-slate-50" key={item}>
                   <div className="flex items-center justify-between gap-2">
-                    <h3 className="text-sm font-semibold text-white">{item}</h3>
-                    <span className="rounded-full bg-cyan-200/10 px-2 py-1 text-[10px] font-bold text-cyan-100">L{index}</span>
+                    <h3 className="truncate text-sm font-medium text-slate-800">{item}</h3>
+                    <span className="rounded border border-slate-200 px-1.5 py-0.5 text-[10px] font-semibold text-slate-500">L{index}</span>
                   </div>
                 </div>
               ))}
             </div>
           </div>
 
-          <div className="mt-4 rounded-[24px] border border-white/10 bg-slate-950/40 p-4">
-            <div className="flex items-center gap-2 text-xs text-emerald-100">
+          <div className="border-t border-slate-200 p-3">
+            <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
               <Activity className="h-4 w-4" />
               当前目标
             </div>
-            <h2 className="mt-2 text-sm font-semibold text-white">{goalSummary.rawIntent}</h2>
-            <p className="mt-2 text-xs text-slate-400">只展示我有权限访问的上游、下游、知识和待办。</p>
+            <h2 className="mt-1 line-clamp-2 text-sm font-medium text-slate-800">{goalSummary.rawIntent}</h2>
+            <p className="mt-1 text-xs text-slate-500">只展示权限内信息。</p>
           </div>
         </aside>
 
-        <section className="flex min-h-0 flex-col gap-4 overflow-hidden">
+        <section className="flex min-h-0 flex-col overflow-hidden bg-slate-50">
           <GateBar />
-          <div className="min-h-0 flex-1 overflow-y-auto rounded-[32px] border border-white/10 bg-[#eef1e6] p-5 text-slate-950 shadow-2xl shadow-black/20">
+          <div className="min-h-0 flex-1 overflow-y-auto p-4 text-slate-950">
             <Outlet />
           </div>
         </section>
