@@ -1,7 +1,6 @@
 import { NavLink, Outlet } from "react-router-dom";
 import { Activity, BellDot, BookOpen, Eye, Network } from "lucide-react";
 import { AgentPanel } from "@/components/AgentPanel";
-import { ContextSpine } from "@/components/ContextSpine";
 import { GateBar } from "@/components/GateBar";
 import { goalSummary } from "@/data/workgraph";
 import { cn } from "@/lib/utils";
@@ -48,8 +47,19 @@ export function AppShell() {
             })}
           </nav>
 
-          <div className="mt-5 min-h-0 flex-1 overflow-y-auto">
-            <ContextSpine />
+          <div className="mt-5 min-h-0 flex-1 overflow-y-auto rounded-[24px] border border-white/10 bg-slate-950/40 p-4">
+            <p className="text-xs uppercase tracking-[0.32em] text-cyan-100/50">GOAL NODES</p>
+            <h2 className="mt-2 text-lg font-semibold text-white">我的目标节点</h2>
+            <div className="mt-4 space-y-2">
+              {["设计未来办公系统", "定义目标节点模型", "设计结构化推理体验"].map((item, index) => (
+                <div className="rounded-2xl bg-white/[0.04] px-3 py-3" key={item}>
+                  <div className="flex items-center justify-between gap-2">
+                    <h3 className="text-sm font-semibold text-white">{item}</h3>
+                    <span className="rounded-full bg-cyan-200/10 px-2 py-1 text-[10px] font-bold text-cyan-100">L{index}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
 
           <div className="mt-4 rounded-[24px] border border-white/10 bg-slate-950/40 p-4">

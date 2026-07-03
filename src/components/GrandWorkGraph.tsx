@@ -1,336 +1,294 @@
 import { useState } from "react";
-import {
-  ArrowDown,
-  Bot,
-  BrainCircuit,
-  CheckCircle2,
-  GitBranch,
-  MessageSquareText,
-  RotateCcw,
-  ShieldCheck,
-  Sparkles,
-  UserRound,
-} from "lucide-react";
+import { ArrowRight, BrainCircuit, CheckCircle2, GitBranch, Plus, RotateCcw, ShieldCheck, Target } from "lucide-react";
 
-type ReasoningStage = {
+type GoalNode = {
   id: string;
   level: string;
-  label: string;
   title: string;
   owner: string;
-  summary: string;
-  input: string[];
-  logic: string[];
-  output: string[];
-  human: string[];
-  agent: string[];
-  children: string[];
+  status: string;
+  parent?: string;
+  interpretation: string;
+  target: string;
+  assumptions: string[];
+  constraints: string[];
+  successCriteria: string[];
+  reasoning: {
+    input: string[];
+    logic: string[];
+    output: string[];
+  };
+  children: Array<{ title: string; owner: string; status: string }>;
+  actions: Array<{ title: string; owner: string; status: string }>;
 };
 
-const stages: ReasoningStage[] = [
+const goalNodes: GoalNode[] = [
   {
-    id: "goal",
+    id: "future-work",
     level: "L0",
-    label: "Goal Node",
     title: "设计未来办公系统",
     owner: "产品负责人",
-    summary: "一个目标化工作节点，承载目标解释、推理、拆解、行动、证据和复盘。",
-    input: ["原始表达：设计未来办公系统", "背景：文档、会议、任务系统割裂", "约束：必须能解释工作从哪里来"],
-    logic: ["先澄清目标口径和成功标准", "识别工作不应拍脑袋，而应来自推理", "确认所有工作都要能追溯来源"],
-    output: ["确认 Goal：用工作图谱承载人和 Agent 协作", "Target：验证核心工作流", "Success Criteria：链路可追溯、可 review、可 redo"],
-    human: ["确认目标是否值得做", "补充业务语境和边界", "决定目标版本是否生效"],
-    agent: ["抽取目标字段", "识别缺失问题", "生成目标解释稿"],
-    children: ["工作表达", "人机协作", "执行闭环"],
+    status: "进行中",
+    interpretation: "做一个以目标节点为中心的工作系统，让人和 Agent 围绕同一个目标持续推理、拆解、执行和复盘。",
+    target: "4 周内完成可在线预览的核心原型，验证目标节点、结构化推理和人机协作闭环。",
+    assumptions: ["目标节点比文档更适合承载连续工作上下文。", "用户需要先看懂工作从哪里来，再决定下一步做什么。"],
+    constraints: ["只展示当前用户有权限看到的上游和知识。", "MVP 不做完整企业 IM 和项目管理替代。"],
+    successCriteria: ["任意工作都能追溯到上级目标。", "每次关键推理都有输入、逻辑和产物。", "下游阻塞能回流上游 review。"],
+    reasoning: {
+      input: ["用户希望未来办公系统不是文档中心。", "当前组织工作经常丢失来源和推理过程。", "Agent 需要结构化对象才能可靠协作。"],
+      logic: ["把所有工作统一为 Goal Node，避免 Goal / SubGoal / WorkUnit 概念分裂。", "每个 Goal Node 内置目标定义、假设约束、推理、行动、证据和 review。", "通过向下拆解和向上反馈保证工作链不断。"],
+      output: ["确认产品核心对象：Goal Node。", "首页改为目标节点工作台。", "右侧只保留决策和 Agent 动态。"],
+    },
+    children: [
+      { title: "定义目标节点模型", owner: "产品负责人", status: "进行中" },
+      { title: "设计结构化推理体验", owner: "交互负责人", status: "待确认" },
+      { title: "打通执行与证据回流", owner: "Agent 编排", status: "待拆解" },
+    ],
+    actions: [
+      { title: "确认 Goal Node 字段是否足够", owner: "产品负责人", status: "待决策" },
+      { title: "删除概念说明式页面模块", owner: "交互负责人", status: "进行中" },
+    ],
   },
   {
-    id: "work-unit",
+    id: "node-model",
     level: "L1",
-    label: "Goal Node",
-    title: "工作表达",
+    title: "定义目标节点模型",
+    owner: "产品负责人",
+    status: "进行中",
+    parent: "设计未来办公系统",
+    interpretation: "把 Goal、SubGoal、WorkUnit 收敛为同一个目标节点对象，并定义它在产品里的字段和操作。",
+    target: "让用户一眼理解：所有工作都是 Goal Node，只是层级、负责人和上下游关系不同。",
+    assumptions: ["减少概念数量会降低理解成本。", "目标节点可以承载从决策到执行的完整上下文。"],
+    constraints: ["不能让首页变成产品说明书。", "不能把 Task 设计成与 Goal Node 平级的核心对象。"],
+    successCriteria: ["页面只出现一个核心对象。", "下级目标仍能继续递归拆解。", "行动和证据都挂在目标节点内。"],
+    reasoning: {
+      input: ["用户反馈 Goal / SubGoal / WorkUnit 是一个东西。", "旧界面 Concept Map 像说明书。", "需要更像真实产品。"],
+      logic: ["把 SubGoal 改成 Child Goal Node。", "把 WorkUnit 从核心概念中移除。", "把 Task 降级为 Goal Node 内部行动。"],
+      output: ["核心对象统一为 Goal Node。", "首页改成目标节点工作台。", "概念图改为真实工作详情。"],
+    },
+    children: [
+      { title: "目标节点字段", owner: "产品负责人", status: "已确认" },
+      { title: "目标节点关系", owner: "架构 Agent", status: "进行中" },
+      { title: "Review / Redo 规则", owner: "复盘 Agent", status: "待确认" },
+    ],
+    actions: [
+      { title: "更新 PRD 术语", owner: "产品负责人", status: "进行中" },
+      { title: "同步前端文案", owner: "工程 Agent", status: "进行中" },
+    ],
+  },
+  {
+    id: "reasoning-ui",
+    level: "L1",
+    title: "设计结构化推理体验",
     owner: "交互负责人",
-    summary: "这是上级 Goal Node 拆出来的下一级 Goal Node，不是另一种对象。",
-    input: ["上级 Goal Node：用工作图谱承载协作", "假设：图谱比文档更适合表达连续推理", "约束：权限内可见"],
-    logic: ["继承上级目标和约束", "把工作表达拆成可操作的界面对象", "判断哪些实体必须第一眼被看见"],
-    output: ["统一概念：Goal / SubGoal / WorkUnit 都是 Goal Node", "保留 Target、Assumption、Constraint、Evidence、Review 作为内部结构", "形成单核心对象图"],
-    human: ["判断哪些概念是用户必须立刻理解的", "选择信息结构", "确认是否继续向下拆"],
-    agent: ["列出候选实体", "检查实体之间关系", "生成可视化方案"],
-    children: ["目标解释卡", "推理步骤卡", "Review / Redo 面板"],
-  },
-  {
-    id: "task",
-    level: "L2",
-    label: "Goal Node",
-    title: "设计推理步骤卡",
-    owner: "Agent + 设计师",
-    summary: "当执行动作需要独立负责人和继续拆解时，它也会升格为一个 Goal Node。",
-    input: ["当前 Goal Node：工作表达", "反馈：概念不清，Goal / SubGoal / WorkUnit 像一个东西", "目标：用一张图讲清楚单核心对象"],
-    logic: ["去掉散点图和大量连线", "用阶梯表达层层拆解", "用结构化卡片表达一次推理"],
-    output: ["概念图：Goal Node 是唯一核心对象", "递归关系：Goal Node -> Child Goal Node", "执行动作：Task 是 Goal Node 内部动作或叶子状态"],
-    human: ["指出当前交互不清楚", "确认这一步推理是否合理", "决定是否 redo"],
-    agent: ["重组信息层级", "提炼推理链路", "给出下一版候选界面"],
-    children: ["可点击原型", "验证反馈", "下一轮 review"],
-  },
-];
-
-const promiseCards = [
-  {
-    icon: GitBranch,
-    title: "一个核心对象",
-    text: "Goal、SubGoal、WorkUnit 都统一成 Goal Node，只是层级和视角不同。",
-  },
-  {
-    icon: BrainCircuit,
-    title: "推理有逻辑",
-    text: "每次推理都显示输入、逻辑和产物，不再只展示一个结论。",
-  },
-  {
-    icon: UserRound,
-    title: "人和 Agent 协作",
-    text: "人负责判断和承诺，Agent 负责结构化、补全和生成候选方案。",
+    status: "待确认",
+    parent: "设计未来办公系统",
+    interpretation: "把一次推理拆成可读、可 review、可 redo 的结构化过程，而不是展示一段聊天或说明文字。",
+    target: "用户能在 10 秒内看懂本次推理用了什么输入、如何推导、产出了什么。",
+    assumptions: ["三段式结构比散点图更易理解。", "用户需要看到人和 Agent 各自做了什么。"],
+    constraints: ["不要在首屏堆太多概念卡。", "Redo 必须显示影响范围。"],
+    successCriteria: ["每次推理都有 x、f(x)、y。", "每一步能 review。", "人和 Agent 的分工清楚。"],
+    reasoning: {
+      input: ["用户反馈太乱。", "旧页面同时出现概念图、阶梯、右侧解释面板。", "真实产品应服务当前工作。"],
+      logic: ["保留目标节点详情作为主视图。", "把推理过程放在当前目标节点内部。", "把右侧收敛为待决策和 Agent 动态。"],
+      output: ["主区变成目标节点工作台。", "推理过程作为当前节点的一个模块。", "右侧不再展示说明书式内容。"],
+    },
+    children: [
+      { title: "推理输入", owner: "交互负责人", status: "已设计" },
+      { title: "推理逻辑", owner: "Agent", status: "进行中" },
+      { title: "推理产物", owner: "产品负责人", status: "待确认" },
+    ],
+    actions: [
+      { title: "确认推理卡是否够清楚", owner: "产品负责人", status: "待决策" },
+      { title: "验证用户是否能理解 redo", owner: "研究 Agent", status: "待开始" },
+    ],
   },
 ];
 
 export function GrandWorkGraph() {
-  const [selectedId, setSelectedId] = useState(stages[0].id);
-  const selectedStage = stages.find((stage) => stage.id === selectedId) ?? stages[0];
+  const [selectedId, setSelectedId] = useState(goalNodes[0].id);
+  const selected = goalNodes.find((node) => node.id === selectedId) ?? goalNodes[0];
 
   return (
-    <section className="rounded-[36px] border border-slate-950/10 bg-[#eef1e6] p-5">
-      <div className="grid gap-3 xl:grid-cols-3">
-        {promiseCards.map((card) => {
-          const Icon = card.icon;
+    <section className="grid gap-5">
+      <header className="rounded-[32px] border border-slate-950/10 bg-white p-5 shadow-sm">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.28em] text-slate-400">Goal Workspace</p>
+            <h1 className="mt-2 text-3xl font-black text-slate-950">目标节点工作台</h1>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">这里不是产品说明书，而是当前目标的工作界面：定义目标、查看推理、拆解下级目标、处理行动和 review。</p>
+          </div>
+          <div className="flex gap-2">
+            <button className="inline-flex items-center gap-2 rounded-2xl bg-slate-950 px-4 py-3 text-sm font-black text-white transition hover:bg-slate-800">
+              <Plus className="h-4 w-4" />
+              新建子目标
+            </button>
+            <button className="inline-flex items-center gap-2 rounded-2xl border border-slate-950/10 px-4 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-100">
+              <RotateCcw className="h-4 w-4" />
+              发起 Review
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <div className="grid gap-5 xl:grid-cols-[320px_minmax(0,1fr)]">
+        <GoalTree selectedId={selectedId} onSelect={setSelectedId} />
+        <GoalDetail node={selected} />
+      </div>
+    </section>
+  );
+}
+
+function GoalTree({ selectedId, onSelect }: { selectedId: string; onSelect: (id: string) => void }) {
+  return (
+    <aside className="rounded-[32px] border border-slate-950/10 bg-slate-950 p-4 text-white">
+      <div className="flex items-center gap-2">
+        <GitBranch className="h-5 w-5 text-cyan-100" />
+        <h2 className="text-lg font-black">目标链路</h2>
+      </div>
+      <p className="mt-2 text-xs leading-5 text-slate-400">每一层都是 Goal Node。下级不是另一种对象，只是更细的一层目标。</p>
+
+      <div className="mt-5 space-y-3">
+        {goalNodes.map((node, index) => {
+          const selected = selectedId === node.id;
           return (
-            <article className="rounded-[28px] border border-slate-950/10 bg-white/75 p-4 shadow-sm" key={card.title}>
-              <div className="flex items-center gap-3">
-                <div className="grid h-10 w-10 place-items-center rounded-2xl bg-slate-950 text-cyan-100">
-                  <Icon className="h-5 w-5" />
+            <button
+              className={`w-full rounded-[24px] border p-4 text-left transition ${
+                selected ? "border-cyan-200 bg-cyan-200 text-slate-950" : "border-white/10 bg-white/[0.04] text-white hover:bg-white/[0.08]"
+              }`}
+              key={node.id}
+              onClick={() => onSelect(node.id)}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className={`text-[11px] font-black uppercase tracking-[0.24em] ${selected ? "text-slate-600" : "text-cyan-100/50"}`}>{node.level}</p>
+                  <h3 className="mt-2 text-sm font-black">{node.title}</h3>
                 </div>
-                <h2 className="text-lg font-black text-slate-950">{card.title}</h2>
+                <span className={`rounded-full px-2.5 py-1 text-[11px] font-black ${selected ? "bg-slate-950 text-white" : "bg-white/10 text-slate-300"}`}>{node.status}</span>
               </div>
-              <p className="mt-3 text-sm leading-6 text-slate-600">{card.text}</p>
-            </article>
+              <p className={`mt-2 text-xs leading-5 ${selected ? "text-slate-700" : "text-slate-400"}`}>{node.owner}</p>
+              {index < goalNodes.length - 1 ? (
+                <div className={`mt-3 flex items-center gap-2 text-xs font-bold ${selected ? "text-slate-600" : "text-slate-500"}`}>
+                  <ArrowRight className="h-3.5 w-3.5" />
+                  拆解到下一层
+                </div>
+              ) : null}
+            </button>
           );
         })}
       </div>
-
-      <ConceptMap />
-
-      <div className="mt-5 grid gap-5 xl:grid-cols-[340px_minmax(0,1fr)]">
-        <aside className="rounded-[32px] border border-slate-950/10 bg-slate-950 p-4 text-white">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-xs uppercase tracking-[0.32em] text-cyan-100/50">Decomposition</p>
-              <h2 className="mt-2 text-xl font-black">目标拆解阶梯</h2>
-            </div>
-            <ShieldCheck className="h-5 w-5 text-cyan-100/70" />
-          </div>
-          <p className="mt-3 text-xs leading-5 text-slate-400">只展示权限内可见链路。每一层都是同一种 Goal Node，只是层级不同。</p>
-
-          <div className="mt-5 space-y-3">
-            {stages.map((stage, index) => {
-              const isSelected = selectedStage.id === stage.id;
-              return (
-                <div key={stage.id}>
-                  <button
-                    className={`w-full rounded-[24px] border p-4 text-left transition ${
-                      isSelected ? "border-cyan-200 bg-cyan-200 text-slate-950" : "border-white/10 bg-white/[0.04] text-white hover:bg-white/[0.08]"
-                    }`}
-                    onClick={() => setSelectedId(stage.id)}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className={`text-xs font-black uppercase tracking-[0.25em] ${isSelected ? "text-slate-600" : "text-cyan-100/50"}`}>
-                          {stage.level} / {stage.label}
-                        </p>
-                        <h3 className="mt-2 text-base font-black">{stage.title}</h3>
-                      </div>
-                      <span className={`rounded-full px-2.5 py-1 text-[11px] font-black ${isSelected ? "bg-slate-950 text-white" : "bg-white/10 text-cyan-50"}`}>
-                        {stage.owner}
-                      </span>
-                    </div>
-                    <p className={`mt-3 text-sm leading-5 ${isSelected ? "text-slate-700" : "text-slate-400"}`}>{stage.summary}</p>
-                    <div className="mt-3 flex flex-wrap gap-1.5">
-                      {stage.children.map((child) => (
-                        <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${isSelected ? "bg-white/60 text-slate-700" : "bg-white/10 text-slate-300"}`} key={child}>
-                          {child}
-                        </span>
-                      ))}
-                    </div>
-                  </button>
-                  {index < stages.length - 1 ? (
-                    <div className="flex h-7 items-center justify-center text-cyan-100/35">
-                      <ArrowDown className="h-4 w-4" />
-                    </div>
-                  ) : null}
-                </div>
-              );
-            })}
-          </div>
-        </aside>
-
-        <div className="grid gap-5">
-          <ReasoningCard stage={selectedStage} />
-          <CollaborationCard stage={selectedStage} />
-        </div>
-      </div>
-    </section>
+    </aside>
   );
 }
 
-function ConceptMap() {
-  const attributes = ["Goal Interpretation", "Target", "Assumption", "Constraint", "Success Criteria", "Reasoning Run", "Actions / Tasks", "Evidence", "Review / Redo"];
-
+function GoalDetail({ node }: { node: GoalNode }) {
   return (
-    <article className="mt-5 rounded-[36px] border border-slate-950/10 bg-slate-950 p-5 text-white shadow-xl shadow-slate-950/10">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <p className="text-xs font-black uppercase tracking-[0.32em] text-cyan-100/50">Concept Map</p>
-          <h2 className="mt-2 text-2xl font-black">一张图：所有工作都是 Goal Node</h2>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
-            `Goal / SubGoal / WorkUnit` 不再是三种对象。它们统一成同一个目标节点，只是所处层级、负责人和上下游关系不同。
-          </p>
+    <div className="grid gap-5">
+      <article className="rounded-[32px] border border-slate-950/10 bg-white p-5 shadow-sm">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.28em] text-slate-400">Current Goal Node</p>
+            <h2 className="mt-2 text-3xl font-black text-slate-950">{node.title}</h2>
+            <p className="mt-2 text-sm font-semibold text-slate-500">负责人：{node.owner} · 状态：{node.status}</p>
+          </div>
+          <span className="rounded-full bg-cyan-100 px-4 py-2 text-xs font-black text-slate-700">{node.level}</span>
         </div>
-        <span className="rounded-full bg-cyan-200 px-4 py-2 text-xs font-black text-slate-950">Single Core Object</span>
+
+        <div className="mt-5 grid gap-4 lg:grid-cols-[1.2fr_1fr]">
+          <InfoBlock icon={Target} title="目标解释" items={[node.interpretation]} />
+          <InfoBlock icon={CheckCircle2} title="目标值" items={[node.target]} />
+        </div>
+      </article>
+
+      <div className="grid gap-4 lg:grid-cols-3">
+        <InfoBlock icon={BrainCircuit} title="假设" items={node.assumptions} />
+        <InfoBlock icon={ShieldCheck} title="约束" items={node.constraints} />
+        <InfoBlock icon={CheckCircle2} title="成功标准" items={node.successCriteria} />
       </div>
 
-      <div className="mt-6 grid gap-4 xl:grid-cols-[1fr_1.3fr_1fr]">
-        <div className="rounded-[28px] border border-white/10 bg-white/[0.04] p-4">
-          <p className="text-xs font-black uppercase tracking-[0.24em] text-cyan-100/50">Upstream</p>
-          <h3 className="mt-2 text-lg font-black">Parent Goal Node</h3>
-          <p className="mt-2 text-sm leading-6 text-slate-400">提供来源、目标语境、上级约束和成功标准。</p>
-          <div className="mt-4 rounded-2xl bg-white/10 px-3 py-2 text-sm font-bold text-cyan-50">feedback_to / review</div>
-        </div>
+      <ReasoningPanel node={node} />
 
-        <div className="rounded-[32px] bg-cyan-200 p-5 text-slate-950">
-          <div className="text-center">
-            <p className="text-xs font-black uppercase tracking-[0.28em] text-slate-600">Core</p>
-            <h3 className="mt-2 text-3xl font-black">Goal Node</h3>
-            <p className="mt-2 text-sm font-semibold leading-6 text-slate-700">一个目标化工作节点，内部包含推理、约束、行动和证据。</p>
-          </div>
-          <div className="mt-5 grid gap-2 sm:grid-cols-3">
-            {attributes.map((item) => (
-              <div className="rounded-2xl bg-white/65 px-3 py-2 text-center text-xs font-black" key={item}>
-                {item}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="rounded-[28px] border border-white/10 bg-white/[0.04] p-4">
-          <p className="text-xs font-black uppercase tracking-[0.24em] text-cyan-100/50">Downstream</p>
-          <h3 className="mt-2 text-lg font-black">Child Goal Nodes</h3>
-          <p className="mt-2 text-sm leading-6 text-slate-400">下一级不是另一种对象，而是继续递归的目标节点。</p>
-          <div className="mt-4 grid gap-2">
-            {["子目标 A", "子目标 B", "子目标 C"].map((item) => (
-              <div className="rounded-2xl bg-white/10 px-3 py-2 text-sm font-bold text-cyan-50" key={item}>
-                {item} = Goal Node
-              </div>
-            ))}
-          </div>
-        </div>
+      <div className="grid gap-5 lg:grid-cols-2">
+        <ListPanel title="下级目标节点" items={node.children} />
+        <ListPanel title="行动" items={node.actions} />
       </div>
-    </article>
+    </div>
   );
 }
 
-function ReasoningCard({ stage }: { stage: ReasoningStage }) {
+function InfoBlock({ icon: Icon, title, items }: { icon: typeof Target; title: string; items: string[] }) {
   return (
-    <article className="rounded-[36px] border border-slate-950/10 bg-white p-5 shadow-xl shadow-slate-950/5">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-400">Reasoning Run</p>
-          <h2 className="mt-2 text-2xl font-black text-slate-950">{stage.title}</h2>
-          <p className="mt-2 text-sm leading-6 text-slate-600">{stage.summary}</p>
-        </div>
-        <div className="flex gap-2">
-          <button className="rounded-2xl bg-slate-950 px-4 py-2 text-xs font-black text-white transition hover:bg-slate-800">Review 本次推理</button>
-          <button className="inline-flex items-center gap-1.5 rounded-2xl border border-slate-950/10 px-4 py-2 text-xs font-black text-slate-700 transition hover:bg-slate-100">
-            <RotateCcw className="h-3.5 w-3.5" />
-            Redo
-          </button>
-        </div>
-      </div>
-
-      <div className="mt-5 grid gap-4 lg:grid-cols-3">
-        <ReasoningColumn icon={MessageSquareText} items={stage.input} title="1. 输入 x" tone="slate" />
-        <ReasoningColumn icon={BrainCircuit} items={stage.logic} title="2. 结构化逻辑 f(x)" tone="cyan" />
-        <ReasoningColumn icon={CheckCircle2} items={stage.output} title="3. 产物 y" tone="emerald" />
-      </div>
-    </article>
-  );
-}
-
-function ReasoningColumn({
-  icon: Icon,
-  items,
-  title,
-  tone,
-}: {
-  icon: typeof BrainCircuit;
-  items: string[];
-  title: string;
-  tone: "slate" | "cyan" | "emerald";
-}) {
-  const toneClass = {
-    slate: "bg-slate-100 text-slate-950",
-    cyan: "bg-cyan-100 text-slate-950",
-    emerald: "bg-emerald-100 text-slate-950",
-  }[tone];
-
-  return (
-    <section className={`rounded-[28px] p-4 ${toneClass}`}>
+    <section className="rounded-[28px] border border-slate-950/10 bg-white p-4">
       <div className="flex items-center gap-2">
-        <div className="grid h-9 w-9 place-items-center rounded-2xl bg-white/70">
+        <div className="grid h-9 w-9 place-items-center rounded-2xl bg-slate-950 text-cyan-100">
           <Icon className="h-4 w-4" />
         </div>
-        <h3 className="text-sm font-black">{title}</h3>
-      </div>
-      <div className="mt-4 space-y-2">
-        {items.map((item) => (
-          <div className="rounded-2xl bg-white/70 px-3 py-2 text-sm font-semibold leading-5" key={item}>
-            {item}
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function CollaborationCard({ stage }: { stage: ReasoningStage }) {
-  return (
-    <article className="rounded-[36px] border border-slate-950/10 bg-[#dbe6d2] p-5">
-      <div className="flex items-center gap-3">
-        <div className="grid h-10 w-10 place-items-center rounded-2xl bg-slate-950 text-cyan-100">
-          <Sparkles className="h-5 w-5" />
-        </div>
-        <div>
-          <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-500">Human + Agent</p>
-          <h2 className="text-xl font-black text-slate-950">这次推理里的结构化协作</h2>
-        </div>
-      </div>
-
-      <div className="mt-5 grid gap-4 md:grid-cols-2">
-        <ActorColumn icon={UserRound} items={stage.human} title="人负责判断和承诺" />
-        <ActorColumn icon={Bot} items={stage.agent} title="Agent 负责结构化和候选方案" />
-      </div>
-    </article>
-  );
-}
-
-function ActorColumn({ icon: Icon, items, title }: { icon: typeof UserRound; items: string[]; title: string }) {
-  return (
-    <section className="rounded-[28px] border border-slate-950/10 bg-white/75 p-4">
-      <div className="flex items-center gap-2">
-        <Icon className="h-4 w-4 text-slate-700" />
         <h3 className="text-sm font-black text-slate-950">{title}</h3>
       </div>
       <div className="mt-4 space-y-2">
         {items.map((item) => (
-          <div className="rounded-2xl border border-slate-950/10 bg-white px-3 py-2 text-sm font-semibold leading-5 text-slate-700" key={item}>
+          <p className="rounded-2xl bg-slate-100 px-3 py-2 text-sm font-semibold leading-6 text-slate-700" key={item}>
             {item}
-          </div>
+          </p>
         ))}
       </div>
     </section>
+  );
+}
+
+function ReasoningPanel({ node }: { node: GoalNode }) {
+  return (
+    <article className="rounded-[32px] border border-slate-950/10 bg-slate-950 p-5 text-white">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <BrainCircuit className="h-5 w-5 text-cyan-100" />
+          <h3 className="text-lg font-black">本次推理</h3>
+        </div>
+        <div className="flex gap-2">
+          <button className="rounded-2xl bg-cyan-200 px-4 py-2 text-xs font-black text-slate-950">Review</button>
+          <button className="rounded-2xl border border-white/10 px-4 py-2 text-xs font-black text-white">Redo</button>
+        </div>
+      </div>
+
+      <div className="mt-5 grid gap-4 lg:grid-cols-3">
+        <ReasoningColumn title="输入 x" items={node.reasoning.input} />
+        <ReasoningColumn title="逻辑 f(x)" items={node.reasoning.logic} />
+        <ReasoningColumn title="产物 y" items={node.reasoning.output} />
+      </div>
+    </article>
+  );
+}
+
+function ReasoningColumn({ title, items }: { title: string; items: string[] }) {
+  return (
+    <section className="rounded-[24px] border border-white/10 bg-white/[0.04] p-4">
+      <h4 className="text-sm font-black text-cyan-50">{title}</h4>
+      <div className="mt-3 space-y-2">
+        {items.map((item) => (
+          <p className="rounded-2xl bg-white/[0.06] px-3 py-2 text-xs font-semibold leading-5 text-slate-300" key={item}>
+            {item}
+          </p>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function ListPanel({ title, items }: { title: string; items: Array<{ title: string; owner: string; status: string }> }) {
+  return (
+    <article className="rounded-[32px] border border-slate-950/10 bg-white p-5">
+      <h3 className="text-lg font-black text-slate-950">{title}</h3>
+      <div className="mt-4 space-y-3">
+        {items.map((item) => (
+          <div className="flex items-start justify-between gap-3 rounded-2xl bg-slate-100 px-4 py-3" key={item.title}>
+            <div>
+              <h4 className="text-sm font-black text-slate-950">{item.title}</h4>
+              <p className="mt-1 text-xs font-semibold text-slate-500">{item.owner}</p>
+            </div>
+            <span className="rounded-full bg-white px-3 py-1 text-[11px] font-black text-slate-600">{item.status}</span>
+          </div>
+        ))}
+      </div>
+    </article>
   );
 }

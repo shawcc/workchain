@@ -1,83 +1,94 @@
-import { Bot, BrainCircuit, GitBranch, RotateCcw, UserRound } from "lucide-react";
-import { agents } from "@/data/workgraph";
+import { Bot, Check, Clock3, RotateCcw, UserRound } from "lucide-react";
 import { StatusPill } from "@/components/StatusPill";
-import { ReasoningDrawer } from "@/components/ReasoningDrawer";
 
-const thinkingSteps = [
-  { label: "理解", human: "确认目标语义", agent: "抽取对象、范围、口径" },
-  { label: "建模", human: "判断假设和约束是否成立", agent: "生成 Target、Assumption、Constraint" },
-  { label: "拆解", human: "选择拆解方向", agent: "生成子 Goal Node 和行动候选" },
-  { label: "复盘", human: "决定是否 redo", agent: "分析影响范围" },
+const decisions = [
+  {
+    title: "确认核心对象统一为 Goal Node",
+    detail: "将 Goal / SubGoal / WorkUnit 收敛为同一个对象。",
+    action: "确认",
+  },
+  {
+    title: "是否删除概念说明模块",
+    detail: "首页只保留目标节点工作台，不再展示 Concept Map。",
+    action: "删除",
+  },
+  {
+    title: "是否重跑结构化推理体验",
+    detail: "Redo 会影响首页布局、右侧面板和文档术语。",
+    action: "Redo",
+  },
+];
+
+const agentUpdates = [
+  { agent: "产品 Agent", text: "已把核心对象收敛为 Goal Node。", status: "完成" },
+  { agent: "交互 Agent", text: "正在替换说明式页面为真实工作台。", status: "进行中" },
+  { agent: "工程 Agent", text: "等待你确认后同步推送到 GitHub。", status: "待确认" },
 ];
 
 export function AgentPanel() {
   return (
     <aside className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto rounded-[32px] border border-white/10 bg-slate-950/60 p-4 backdrop-blur-xl">
       <div>
-        <p className="text-xs uppercase tracking-[0.35em] text-cyan-100/50">SELECTED</p>
-        <h2 className="mt-2 text-lg font-semibold text-white">结构化推理协作</h2>
-        <p className="mt-2 text-xs leading-5 text-slate-400">每次推理都拆成固定步骤：人做判断，Agent 做结构化和候选生成。</p>
+        <p className="text-xs uppercase tracking-[0.35em] text-cyan-100/50">RIGHT NOW</p>
+        <h2 className="mt-2 text-lg font-semibold text-white">待我处理</h2>
+        <p className="mt-2 text-xs leading-5 text-slate-400">这里只放需要用户判断、确认或重跑的事项。</p>
       </div>
 
-      <div className="rounded-[24px] border border-cyan-200/15 bg-cyan-200/10 p-4">
-        <div className="flex items-center gap-2 text-sm font-semibold text-cyan-50">
-          <GitBranch className="h-4 w-4" />
-          本步可 Review / Redo
+      <section className="rounded-[24px] border border-cyan-200/15 bg-cyan-200/10 p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-sm font-semibold text-cyan-50">
+            <UserRound className="h-4 w-4" />
+            需要你决策
+          </div>
+          <StatusPill>3 条</StatusPill>
         </div>
-        <p className="mt-2 text-xs leading-5 text-cyan-50/70">
-          Redo 前需要先确认影响范围：3 个子 Goal Node、5 个行动和 2 个证据要求可能被重算。
-        </p>
-        <div className="mt-3 grid grid-cols-2 gap-2">
-          <button className="rounded-2xl bg-cyan-200 px-3 py-2 text-xs font-black text-slate-950 transition hover:bg-cyan-100">
-            Review 本步
-          </button>
-          <button className="inline-flex items-center justify-center gap-1 rounded-2xl border border-white/10 px-3 py-2 text-xs font-black text-white transition hover:bg-white/10">
-            <RotateCcw className="h-3.5 w-3.5" />
-            Redo
-          </button>
-        </div>
-      </div>
 
-      <div className="rounded-[24px] border border-white/10 bg-white/[0.04] p-4">
-        <div className="flex items-center gap-2 text-sm font-semibold text-white">
-          <BrainCircuit className="h-4 w-4 text-cyan-200" />
-          本次推理的分工
-        </div>
         <div className="mt-4 space-y-3">
-          {thinkingSteps.map((step) => (
-            <div className="rounded-2xl border border-white/10 bg-slate-950/40 p-3" key={step.label}>
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-cyan-50">{step.label}</h3>
-                <StatusPill variant="high">结构化</StatusPill>
+          {decisions.map((item) => (
+            <article className="rounded-2xl border border-white/10 bg-slate-950/45 p-3" key={item.title}>
+              <h3 className="text-sm font-semibold text-white">{item.title}</h3>
+              <p className="mt-1 text-xs leading-5 text-slate-400">{item.detail}</p>
+              <div className="mt-3 flex gap-2">
+                <button className="inline-flex flex-1 items-center justify-center gap-1 rounded-xl bg-cyan-200 px-3 py-2 text-xs font-black text-slate-950 transition hover:bg-cyan-100">
+                  <Check className="h-3.5 w-3.5" />
+                  {item.action}
+                </button>
+                <button className="inline-flex items-center justify-center gap-1 rounded-xl border border-white/10 px-3 py-2 text-xs font-black text-slate-200 transition hover:bg-white/10">
+                  <RotateCcw className="h-3.5 w-3.5" />
+                  Review
+                </button>
               </div>
-              <div className="mt-3 grid gap-2 text-xs">
-                <p className="rounded-xl bg-white/[0.04] px-3 py-2 text-slate-300">
-                  <UserRound className="mr-1 inline h-3.5 w-3.5 text-cyan-100" />
-                  {step.human}
-                </p>
-                <p className="rounded-xl bg-white/[0.04] px-3 py-2 text-slate-300">
-                  <Bot className="mr-1 inline h-3.5 w-3.5 text-cyan-100" />
-                  {step.agent}
-                </p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="rounded-[24px] border border-white/10 bg-white/[0.04] p-4">
+        <div className="flex items-center gap-2 text-sm font-semibold text-white">
+          <Bot className="h-4 w-4 text-cyan-200" />
+          Agent 动态
+        </div>
+
+        <div className="mt-4 space-y-3">
+          {agentUpdates.map((item) => (
+            <div className="rounded-2xl bg-white/[0.04] p-3" key={item.text}>
+              <div className="flex items-start justify-between gap-2">
+                <h3 className="text-sm font-semibold text-white">{item.agent}</h3>
+                <span className="rounded-full bg-white/10 px-2 py-1 text-[11px] font-bold text-cyan-100">{item.status}</span>
               </div>
+              <p className="mt-1 text-xs leading-5 text-slate-400">{item.text}</p>
             </div>
           ))}
         </div>
-      </div>
+      </section>
 
-      <div className="grid gap-2">
-        {agents.slice(0, 3).map((agent) => (
-          <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3" key={agent.name}>
-            <div className="flex items-center gap-2 text-sm font-medium text-white">
-              <Bot className="h-4 w-4 text-cyan-200" />
-              {agent.name}
-            </div>
-            <p className="mt-1 text-xs text-slate-400">{agent.role}</p>
-          </div>
-        ))}
-      </div>
-
-      <ReasoningDrawer />
+      <section className="rounded-[24px] border border-white/10 bg-slate-950/40 p-4">
+        <div className="flex items-center gap-2 text-sm font-semibold text-white">
+          <Clock3 className="h-4 w-4 text-cyan-200" />
+          下一步
+        </div>
+        <p className="mt-2 text-xs leading-5 text-slate-400">确认当前目标节点模型后，系统会生成下一级目标节点和行动清单。</p>
+      </section>
     </aside>
   );
 }
