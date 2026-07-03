@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { ArrowRight, BrainCircuit, CheckCircle2, GitBranch, Plus, RotateCcw, ShieldCheck, Target } from "lucide-react";
+import { ArrowRight, BrainCircuit, Check, CheckCircle2, GitBranch, Plus, RotateCcw, ShieldCheck, Target } from "lucide-react";
+
+type WorkItem = { title: string; owner: string; status: string };
 
 type GoalNode = {
   id: string;
@@ -18,8 +20,8 @@ type GoalNode = {
     logic: string[];
     output: string[];
   };
-  children: Array<{ title: string; owner: string; status: string }>;
-  actions: Array<{ title: string; owner: string; status: string }>;
+  children: WorkItem[];
+  actions: WorkItem[];
 };
 
 const goalNodes: GoalNode[] = [
@@ -133,7 +135,7 @@ export function GrandWorkGraph() {
 
       <div className="grid gap-3 xl:grid-cols-[280px_minmax(0,1fr)]">
         <GoalTree selectedId={selectedId} onSelect={setSelectedId} />
-        <GoalDetail node={selected} />
+        <GoalDetail key={selected.id} node={selected} />
       </div>
     </section>
   );
@@ -180,6 +182,9 @@ function GoalTree({ selectedId, onSelect }: { selectedId: string; onSelect: (id:
 }
 
 function GoalDetail({ node }: { node: GoalNode }) {
+  const defaultWork = node.actions.find((item) => item.status.includes("待")) ?? node.children.find((item) => item.status.includes("待")) ?? node.actions[0] ?? node.children[0];
+  const [selectedWork, setSelectedWork] = useState<WorkItem | undefined>(defaultWork);
+
   return (
     <div className="grid gap-3">
       <article className="rounded-lg border border-slate-200 bg-white px-4 py-3">
@@ -206,9 +211,10 @@ function GoalDetail({ node }: { node: GoalNode }) {
 
       <ReasoningPanel node={node} />
 
-      <div className="grid gap-3 lg:grid-cols-2">
-        <ListPanel title="下级目标节点" items={node.children} />
-        <ListPanel title="行动" items={node.actions} />
+      <div className="grid gap-3 lg:grid-cols-[1fr_1fr_320px]">
+        <ListPanel items={node.children} onSelect={setSelectedWork} selectedTitle={selectedWork?.title} title="下级目标节点" />
+        <ListPanel items={node.actions} onSelect={setSelectedWork} selectedTitle={selectedWork?.title} title="行动" />
+        <WorkActionPanel item={selectedWork} />
       </div>
     </div>
   );
@@ -272,21 +278,85 @@ function ReasoningColumn({ title, items }: { title: string; items: string[] }) {
   );
 }
 
-function ListPanel({ title, items }: { title: string; items: Array<{ title: string; owner: string; status: string }> }) {
+function ListPanel({
+  items,
+  onSelect,
+  selectedTitle,
+  title,
+}: {
+  items: WorkItem[];
+  onSelect: (item: WorkItem) => void;
+  selectedTitle?: string;
+  title: string;
+}) {
   return (
     <article className="rounded-lg border border-slate-200 bg-white">
       <h3 className="border-b border-slate-200 px-3 py-2 text-sm font-semibold text-slate-900">{title}</h3>
       <div className="divide-y divide-slate-100">
         {items.map((item) => (
-          <div className="flex items-start justify-between gap-3 px-3 py-2.5" key={item.title}>
+          <button
+            className={`flex w-full items-start justify-between gap-3 px-3 py-2.5 text-left transition ${
+              selectedTitle === item.title ? "bg-slate-100" : "hover:bg-slate-50"
+            }`}
+            key={item.title}
+            onClick={() => onSelect(item)}
+          >
             <div>
               <h4 className="text-sm font-medium text-slate-900">{item.title}</h4>
               <p className="mt-0.5 text-xs text-slate-500">{item.owner}</p>
             </div>
-            <span className="rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[11px] font-medium text-slate-500">{item.status}</span>
-          </div>
+            <span
+              className={`rounded border px-1.5 py-0.5 text-[11px] font-medium ${
+                item.status.includes("待") ? "border-amber-200 bg-amber-50 text-amber-700" : "border-slate-200 bg-slate-50 text-slate-500"
+              }`}
+            >
+              {item.status}
+            </span>
+          </button>
         ))}
       </div>
     </article>
+  );
+}
+
+function WorkActionPanel({ item }: { item?: WorkItem }) {
+  if (!item) {
+    return (
+      <aside className="rounded-lg border border-slate-200 bg-white p-3">
+        <h3 className="text-sm font-semibold text-slate-900">处理面板</h3>
+        <p className="mt-2 text-sm leading-6 text-slate-500">选择一个下级目标或行动后，在这里处理需要你确认的事项。</p>
+      </aside>
+    );
+  }
+
+  const needsAction = item.status.includes("待");
+
+  return (
+    <aside className="rounded-lg border border-slate-200 bg-white">
+      <div className="border-b border-slate-200 px-3 py-2">
+        <h3 className="text-sm font-semibold text-slate-900">处理面板</h3>
+        <p className="mt-0.5 text-xs text-slate-500">当前卡片内处理，不再占用全局右栏。</p>
+      </div>
+      <div className="px-3 py-3">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400">Selected</p>
+        <h4 className="mt-1 text-sm font-semibold text-slate-950">{item.title}</h4>
+        <p className="mt-1 text-xs text-slate-500">负责人：{item.owner} · 状态：{item.status}</p>
+
+        {needsAction ? (
+          <div className="mt-3 grid gap-2">
+            <button className="inline-flex items-center justify-center gap-1.5 rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800">
+              <Check className="h-4 w-4" />
+              确认并继续
+            </button>
+            <button className="inline-flex items-center justify-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+              <RotateCcw className="h-4 w-4" />
+              Review / Redo
+            </button>
+          </div>
+        ) : (
+          <p className="mt-3 rounded-md bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-500">当前没有必须由你处理的动作，可进入详情查看证据、依赖和下游进展。</p>
+        )}
+      </div>
+    </aside>
   );
 }

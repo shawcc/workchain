@@ -1,6 +1,5 @@
 import { NavLink, Outlet } from "react-router-dom";
 import { Activity, BellDot, BookOpen, Eye, Network } from "lucide-react";
-import { AgentPanel } from "@/components/AgentPanel";
 import { GateBar } from "@/components/GateBar";
 import { goalSummary } from "@/data/workgraph";
 import { cn } from "@/lib/utils";
@@ -15,7 +14,7 @@ const navItems = [
 export function AppShell() {
   return (
     <div className="min-h-screen overflow-hidden bg-slate-100 text-slate-900">
-      <main className="grid h-screen grid-cols-[220px_minmax(0,1fr)_320px] gap-px bg-slate-200 max-xl:grid-cols-[200px_minmax(0,1fr)] max-xl:[&_.agent-shell]:hidden">
+      <main className="grid h-screen grid-cols-[220px_minmax(0,1fr)] gap-px bg-slate-200 max-xl:grid-cols-[200px_minmax(0,1fr)]">
         <aside className="flex min-h-0 flex-col bg-white">
           <div className="border-b border-slate-200 px-4 py-3">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Future Work</p>
@@ -78,9 +77,6 @@ export function AppShell() {
           </div>
         </section>
 
-        <div className="agent-shell min-h-0">
-          <AgentPanel />
-        </div>
       </main>
     </div>
   );
