@@ -3,14 +3,19 @@ import { StatusPill } from "@/components/StatusPill";
 
 const nodeColors = {
   raw_intent: "bg-slate-950 text-white",
+  goal_interpretation: "bg-lime-200 text-slate-950",
   goal: "bg-cyan-200 text-slate-950",
+  target: "bg-sky-200 text-slate-950",
   assumption: "bg-amber-200 text-slate-950",
   constraint: "bg-orange-200 text-slate-950",
+  success_criteria: "bg-teal-200 text-slate-950",
+  work_unit: "bg-emerald-200 text-slate-950",
   sub_goal: "bg-emerald-200 text-slate-950",
   task: "bg-blue-200 text-slate-950",
   evidence: "bg-violet-200 text-slate-950",
   exception: "bg-red-200 text-slate-950",
   reasoning_record: "bg-lime-200 text-slate-950",
+  review: "bg-rose-200 text-slate-950",
 };
 
 export function GraphCanvas() {
@@ -26,7 +31,7 @@ export function GraphCanvas() {
             <line
               key={edge.id}
               stroke="rgba(15, 23, 42, 0.35)"
-              strokeDasharray={edge.relation === "impacts" ? "5 7" : "0"}
+              strokeDasharray={edge.relation === "impacts" || edge.relation === "feedback_to" ? "5 7" : "0"}
               strokeWidth="1.5"
               x1={`${source.x}%`}
               x2={`${target.x}%`}
@@ -51,9 +56,10 @@ export function GraphCanvas() {
 
       <div className="absolute bottom-5 left-5 flex flex-wrap gap-2">
         <StatusPill variant="low">derives_from</StatusPill>
-        <StatusPill variant="high">supports</StatusPill>
+        <StatusPill variant="high">decomposes_to</StatusPill>
         <StatusPill variant="medium">impacts</StatusPill>
         <StatusPill>proves</StatusPill>
+        <StatusPill variant="low">feedback_to</StatusPill>
       </div>
     </div>
   );

@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from "react-router-dom";
-import { Activity, BrainCircuit, GitFork, LayoutDashboard, Network, PanelsTopLeft } from "lucide-react";
+import { Activity, BellDot, BookOpen, Eye, Network } from "lucide-react";
 import { AgentPanel } from "@/components/AgentPanel";
 import { ContextSpine } from "@/components/ContextSpine";
 import { GateBar } from "@/components/GateBar";
@@ -7,11 +7,10 @@ import { goalSummary } from "@/data/workgraph";
 import { cn } from "@/lib/utils";
 
 const navItems = [
-  { path: "/", label: "总图", icon: Network },
-  { path: "/understanding", label: "当前推理", icon: BrainCircuit },
-  { path: "/sub-goals", label: "子目标", icon: GitFork },
-  { path: "/graph", label: "节点详情", icon: PanelsTopLeft },
-  { path: "/actions", label: "待办", icon: LayoutDashboard },
+  { path: "/", label: "工作图谱", icon: Network },
+  { path: "/focused", label: "关注的工作", icon: Eye },
+  { path: "/decisions", label: "决策待办", icon: BellDot },
+  { path: "/knowledge", label: "知识库", icon: BookOpen },
 ];
 
 export function AppShell() {
@@ -25,7 +24,7 @@ export function AppShell() {
           <div className="rounded-[24px] border border-cyan-200/20 bg-cyan-200/10 p-4">
             <p className="text-xs uppercase tracking-[0.35em] text-cyan-100/60">FUTURE WORK</p>
             <h1 className="mt-3 text-2xl font-semibold leading-tight text-white">设计未来办公系统</h1>
-            <p className="mt-3 text-xs leading-5 text-slate-300">4 周探索 · 当前阶段：工作表达</p>
+            <p className="mt-3 text-xs leading-5 text-slate-300">我的可见空间 · 权限内图谱</p>
           </div>
 
           <nav className="mt-5 space-y-2">
@@ -59,7 +58,7 @@ export function AppShell() {
               当前目标
             </div>
             <h2 className="mt-2 text-sm font-semibold text-white">{goalSummary.rawIntent}</h2>
-            <p className="mt-2 text-xs text-slate-400">{goalSummary.timeRange} · {goalSummary.marketScope}</p>
+            <p className="mt-2 text-xs text-slate-400">只展示我有权限访问的上游、下游、知识和待办。</p>
           </div>
         </aside>
 

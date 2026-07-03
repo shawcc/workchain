@@ -1,13 +1,18 @@
 export type GraphNodeType =
   | "raw_intent"
+  | "goal_interpretation"
   | "goal"
+  | "target"
   | "assumption"
   | "constraint"
+  | "success_criteria"
+  | "work_unit"
   | "sub_goal"
   | "task"
   | "evidence"
   | "exception"
-  | "reasoning_record";
+  | "reasoning_record"
+  | "review";
 
 export type Confidence = "low" | "medium" | "high";
 
@@ -32,7 +37,12 @@ export interface GraphEdge {
     | "depends_on"
     | "proves"
     | "impacts"
-    | "approves";
+    | "approves"
+    | "includes"
+    | "decomposes_to"
+    | "feedback_to"
+    | "reviews"
+    | "revises";
 }
 
 export interface ReasoningRecord {

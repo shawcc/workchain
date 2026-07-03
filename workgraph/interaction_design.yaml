@@ -32,6 +32,16 @@ design_thesis:
     title: 每次关键推理都要记录 f(x)
     content: "交互中所有目标理解、小目标拆解、任务生成、异常处理和验收判断，都应记录输入信息 x、推理过程 f(x)、阶段结论 y，便于复盘和校准推理过程。"
 
+  - id: ix-thesis-005
+    type: design_thesis
+    title: 界面必须显性呈现核心实体
+    content: "工作台不能只表达推理链条不断，还要显性呈现 Raw Intent、Goal Interpretation、Goal、Target、Assumption、Constraint、Success Criteria、Work Unit、Task、Evidence 和 Review 等实体。"
+
+  - id: ix-thesis-006
+    type: design_thesis
+    title: 每一步推理都应可 Review 和 Redo
+    content: "推理过程不是一次性黑盒生成，而是由 Understand、Clarify、Frame、Decompose、Plan、Execute、Review 等步骤组成；每一步都应支持查看输入、查看推理、查看产物、Review、Redo 和影响分析。"
+
 product_shell:
   - id: shell-001
     type: navigation
@@ -57,6 +67,16 @@ product_shell:
     type: reasoning_surface
     title: 推理记录抽屉
     content: "在关键确认和验收动作旁展示 f(x)：本次推理使用了哪些信息 x、经历了什么推理过程、形成了什么阶段结论 y。"
+
+  - id: shell-006
+    type: reasoning_surface
+    title: 推理步骤面板
+    content: "在主工作台右侧常驻展示当前推理步骤，包括输入 x、推理 f(x)、产物 y、Review、Redo 和影响范围。"
+
+  - id: shell-007
+    type: graph_surface
+    title: 核心对象图谱画布
+    content: "在主工作区显性展示 Raw Intent、Goal Interpretation、Goal、Target、Assumption、Constraint、Success Criteria、Work Unit、Task、Evidence、Review 及其关系。"
 
 screens:
   - id: screen-001
@@ -155,23 +175,61 @@ screens:
     purpose: "展示从目标到任务、证据、验收和异常的完整可推理结构。"
     primary_user: CEO / 目标负责人 / PMO
     main_objects:
+      - raw_intent
+      - goal_interpretation
       - goal
+      - target
       - assumption
       - constraint
+      - success_criteria
+      - work_unit
       - sub_goal
       - task
       - evidence
       - exception
+      - review
     core_interactions:
       - 查看节点关系
       - 展开支撑链路
       - 查看风险路径
       - 从节点进入详情
+      - 查看当前节点来源
+      - 发起节点 Review
+      - Redo 某个推理步骤并查看影响范围
       - 生成阅读快照
     graph_mutations:
       - update_edge: supports
       - update_edge: depends_on
+      - create_node: review
+      - create_edge: feedback_to
       - create_snapshot: report
+
+  - id: screen-005a
+    type: screen
+    title: 推理步骤 Review / Redo 面板
+    purpose: "让用户对单个推理步骤进行 review、补充证据、修改前提或 redo，并查看对下游链路的影响。"
+    primary_user: CEO / 目标负责人 / 执行者
+    main_objects:
+      - reasoning_step
+      - input_x
+      - process_fx
+      - output_y
+      - impacted_node
+      - review
+    core_interactions:
+      - 查看本步输入 x
+      - 查看本步推理 f(x)
+      - 查看本步产物 y
+      - 指出推理问题
+      - 补充证据或修改前提
+      - Redo 本步
+      - 确认下游影响范围
+    graph_mutations:
+      - create_node: review
+      - update_node: reasoning_record
+      - create_edge: reviews
+      - create_edge: revises
+      - create_edge: feedback_to
 
   - id: screen-006
     type: screen

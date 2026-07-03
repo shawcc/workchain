@@ -1,10 +1,10 @@
-import { CheckCircle2, CircleDot, GitBranch, ShieldAlert } from "lucide-react";
+import { BellDot, BookOpen, Eye, Network } from "lucide-react";
 
 const steps = [
-  { label: "意图已输入", icon: CircleDot, active: true },
-  { label: "目标待确认", icon: CheckCircle2, active: true },
-  { label: "小目标待确认", icon: GitBranch, active: false },
-  { label: "异常待决策", icon: ShieldAlert, active: false },
+  { label: "可见图谱", icon: Network, active: true },
+  { label: "关注工作", icon: Eye, active: true },
+  { label: "决策待办", icon: BellDot, active: true },
+  { label: "权限知识", icon: BookOpen, active: false },
 ];
 
 export function GateBar() {
@@ -13,7 +13,7 @@ export function GateBar() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-xs uppercase tracking-[0.35em] text-cyan-100/50">CURRENT</p>
-          <h2 className="mt-1 text-sm font-semibold text-white">未来办公系统 → 工作表达 → 人机协作 → 执行闭环</h2>
+          <h2 className="mt-1 text-sm font-semibold text-white">我的工作空间：图谱 · 关注 · 决策 · 知识</h2>
         </div>
         <div className="flex flex-wrap gap-2">
           {steps.map((step) => {
