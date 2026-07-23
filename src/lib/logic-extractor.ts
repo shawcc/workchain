@@ -20,7 +20,8 @@ type LogicRelation =
   | "progressive"  // 递进：不仅 A，而且 B → A → A+B
   | "sequential"   // 顺序：首先 A，然后 B → A → B
   | "purpose"      // 目的：为了 A，需要 B → B → A
-  | "concession";  // 让步：除非 A，否则 B → ¬A → B
+  | "concession"   // 让步：除非 A，否则 B → ¬A → B
+  | "proportional" // 比例/约束：多少 A，多少 B → A ∝ B
 
 /**
  * 逻辑连接词模式
@@ -33,6 +34,7 @@ interface LogicPattern {
 }
 
 const LOGIC_PATTERNS: LogicPattern[] = [
+  /* ── 因果 ── */
   {
     relation: "causal",
     arrow: "→",
@@ -46,8 +48,16 @@ const LOGIC_PATTERNS: LogicPattern[] = [
       /(.+?)[，,]\s*所以(.+)/,
       /(.+?)[，,]\s*导致(.+)/,
       /(.+?)[，,]\s*造成了(.+)/,
+      // 隐性因果
+      /既然(.+?)[，,]\s*就(.+)/,
+      /既然(.+?)[，,]\s*那么(.+)/,
+      /既然(.+?)[，,]\s*那(.+)/,
+      /幸亏(.+?)[，,]\s*才(.+)/,
+      /多亏(.+?)[，,]\s*才(.+)/,
+      /要不是(.+?)[，,]\s*.+?就(.+)/,
     ],
   },
+  /* ── 条件 ── */
   {
     relation: "conditional",
     arrow: "⇒",
@@ -58,8 +68,19 @@ const LOGIC_PATTERNS: LogicPattern[] = [
       /若(.+?)[，,]\s*则(.+)/,
       /只有(.+?)[，,]\s*才(.+)/,
       /一旦(.+?)[，,]\s*就(.+)/,
+      // 隐性条件
+      /只要(.+?)[，,]\s*就(.+)/,
+      /没有(.+?)[，,]?\s*就(.+)/,
+      /(.+?)的话[，,]?\s*(.+)/,
+      /凡是(.+?)[，,]\s*都(.+)/,
+      /无论(.+?)[，,]\s*都(.+)/,
+      /不管(.+?)[，,]\s*都(.+)/,
+      /不论(.+?)[，,]\s*都(.+)/,
+      /任(.+?)[，,]\s*都(.+)/,
+      /万一(.+?)[，,]\s*就(.+)/,
     ],
   },
+  /* ── 转折 ── */
   {
     relation: "transitional",
     arrow: "⇏",
@@ -72,8 +93,20 @@ const LOGIC_PATTERNS: LogicPattern[] = [
       /(.+?)[，,]\s*不过(.+)/,
       /(.+?)[，,]\s*可是(.+)/,
       /(.+?)[，,]\s*但(.+)/,
+      // 隐性转折
+      /即使(.+?)[，,]\s*也(.+)/,
+      /即便(.+?)[，,]\s*也(.+)/,
+      /就算(.+?)[，,]\s*也(.+)/,
+      /不是(.+?)[，,]\s*而是(.+)/,
+      /(.+?)[，,]\s*反而(.+)/,
+      /(.+?)[，,]\s*反倒(.+)/,
+      /与其(.+?)[，,]\s*不如(.+)/,
+      /宁可(.+?)[，,]\s*也不(.+)/,
+      /宁愿(.+?)[，,]\s*也不(.+)/,
+      /(.+?)[，,]\s*却(.+)/,
     ],
   },
+  /* ── 递进 ── */
   {
     relation: "progressive",
     arrow: "→",
@@ -85,8 +118,17 @@ const LOGIC_PATTERNS: LogicPattern[] = [
       /(.+?)[，,]\s*并且(.+)/,
       /(.+?)[，,]\s*同时(.+)/,
       /(.+?)[，,]\s*进而(.+)/,
+      // 隐性递进
+      /(.+?)[，,]\s*甚至(.+)/,
+      /(.+?)[，,]\s*何况(.+)/,
+      /(.+?)[，,]\s*况且(.+)/,
+      /(.+?)[，,]\s*更何况(.+)/,
+      /(.+?)[，,]\s*尤其是(.+)/,
+      /(.+?)[，,]\s*特别是(.+)/,
+      /越(.+?)[，,]\s*越(.+)/,
     ],
   },
+  /* ── 顺序 ── */
   {
     relation: "sequential",
     arrow: "→",
@@ -97,8 +139,12 @@ const LOGIC_PATTERNS: LogicPattern[] = [
       /先(.+?)[，,]\s*然后(.+)/,
       /(.+?)[，,]\s*接着(.+)/,
       /(.+?)[，,]\s*之后(.+)/,
+      // 隐性顺序
+      /一(.+?)[，,]\s*就(.+)/,
+      /(.+?)[，,]\s*便(.+)/,
     ],
   },
+  /* ── 目的 ── */
   {
     relation: "purpose",
     arrow: "→",
@@ -106,10 +152,16 @@ const LOGIC_PATTERNS: LogicPattern[] = [
     patterns: [
       /为了(.+?)[，,]\s*需要(.+)/,
       /为(.+?)[，,]\s*应(.+)/,
+      /(.+?)[，,]\s*以免(.+)/,
+      /(.+?)[，,]\s*免得(.+)/,
+      /(.+?)[，,]\s*以防(.+)/,
+      /(.+?)[，,]\s*省得(.+)/,
       /(.+?)[，,]\s*以便(.+)/,
+      /要(.+?)[，,]\s*就要(.+)/,
       /(.+?)[，,]\s*以(.+)/,
     ],
   },
+  /* ── 让步 ── */
   {
     relation: "concession",
     arrow: "⇒",
@@ -117,6 +169,22 @@ const LOGIC_PATTERNS: LogicPattern[] = [
     patterns: [
       /除非(.+?)[，,]\s*否则(.+)/,
       /除非(.+?)[，,]\s*不然(.+)/,
+      /(.+?)[，,]\s*否则(.+)/,
+      /(.+?)[，,]\s*不然(.+)/,
+    ],
+  },
+  /* ── 比例/约束 ── */
+  {
+    relation: "proportional",
+    arrow: "→",
+    connectorWord: "约束",
+    patterns: [
+      /(.+?多少)[，,]?\s*(.+?多少)/,
+      /(.+?什么)[，,]?\s*(.+?什么)/,
+      /(.+?怎么)[，,]?\s*(.+?怎么)/,
+      /该(.+?)[，,]?\s*就(.+)/,
+      /能(.+?)[，,]\s*就(.+)/,
+      /(没有.+?)的[，,]?\s*(不.+)/,
     ],
   },
 ];
@@ -137,30 +205,32 @@ function splitSentences(text: string): string[] {
 }
 
 /**
- * 句首结论词：因此 / 所以 / 因而 开头的句子
- * 表示从前文推导出的结论，标记为 → 关系
+ * 句首结论/推论词：从前文推导出的结论
  */
-const SENTENCE_START_CONCLUSION = /^(?:因此|所以|因而)[，,]?\s*(.+)/;
+const SENTENCE_START_CONCLUSION = /^(?:因此|所以|因而|总之|综上所述|可见|由此可见|看来|归根到底|说到底|换句话说|也就是说|换言之|难怪|为此|于是|故|据此|基于此|基于以上|由此|综上|简言之|简而言之)[，,]?\s*(.+)/;
 
 /**
  * 尝试匹配一条逻辑模式
- * 返回 LogicNode 或 null（未匹配到）
+ * 返回匹配结果和匹配结束位置，或 null
  */
-function tryMatchPattern(text: string): LogicNode | null {
+function tryMatchPattern(text: string): { node: LogicNode; end: number } | null {
   // 先检查句首结论词
   const conclusionMatch = text.match(SENTENCE_START_CONCLUSION);
   if (conclusionMatch) {
     const conclusion = conclusionMatch[1].trim();
     return {
-      text: `→ ${conclusion}`,
-      relationLabel: "→ 因此",
-      chain: [{ text: conclusion }],
+      node: {
+        text: `→ ${conclusion}`,
+        relationLabel: "→ 因此",
+        chain: [{ text: conclusion }],
+      },
+      end: conclusionMatch[0].length,
     };
   }
 
   for (const pattern of LOGIC_PATTERNS) {
     for (const regex of pattern.patterns) {
-      const match = text.match(regex);
+      const match = regex.exec(text);
       if (match) {
         const a = match[1].trim();
         const b = match[2].trim();
@@ -171,9 +241,12 @@ function tryMatchPattern(text: string): LogicNode | null {
         const bChain = extractLogicChain(b);
 
         return {
-          text: `${a} ${pattern.arrow} ${b}`,
-          relationLabel,
-          chain: [...aChain, ...bChain],
+          node: {
+            text: `${a} ${pattern.arrow} ${b}`,
+            relationLabel,
+            chain: [...aChain, ...bChain],
+          },
+          end: match.index + match[0].length,
         };
       }
     }
@@ -201,12 +274,17 @@ export function extractLogicChain(text: string): LogicNode[] {
   const result: LogicNode[] = [];
 
   for (const sentence of sentences) {
-    const matched = tryMatchPattern(sentence);
-    if (matched) {
-      result.push(matched);
-    } else {
-      // 没有匹配到逻辑连接词，作为叶子节点
-      result.push({ text: sentence });
+    let remaining = sentence.trim();
+    while (remaining.length > 0) {
+      const matched = tryMatchPattern(remaining);
+      if (matched) {
+        result.push(matched.node);
+        // 去掉匹配结束后的内容，清理前导标点
+        remaining = remaining.slice(matched.end).replace(/^[，,]\s*/, "").trim();
+      } else {
+        result.push({ text: remaining });
+        break;
+      }
     }
   }
 
