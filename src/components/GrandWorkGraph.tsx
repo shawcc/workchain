@@ -20,6 +20,7 @@ import { extractLogicChain } from "../lib/logic-extractor";
 
 type LogicNode = {
   text: string;
+  relationLabel?: string;
   chain?: LogicNode[];
 };
 
@@ -1370,7 +1371,7 @@ function ReasoningNode({ node }: { node: LogicNode }) {
       </button>
       {open && hasChain && (
         <div className="ml-4 mt-1.5">
-          <LogicChainView nodes={node.chain!} />
+          <LogicChainView nodes={node.chain!} relationLabel={node.relationLabel} />
         </div>
       )}
     </div>
@@ -1379,7 +1380,14 @@ function ReasoningNode({ node }: { node: LogicNode }) {
 
 /* ── 逻辑链视图：A → B → C ── */
 
-function LogicChainNodeView({ node, hasArrow }: { node: LogicNode; hasArrow: boolean }) {
+/** 根据关系标签返回颜色 class */
+function relationColor(label: string): string {
+  if (label.startsWith("⇏")) return "text-red-600 bg-red-50 border-red-200";
+  if (label.startsWith("⇒")) return "text-purple-600 bg-purple-50 border-purple-200";
+  return "text-blue-600 bg-blue-50 border-blue-200";
+}
+
+function LogicChainNodeView({ node, hasArrow, relationLabel }: { node: LogicNode; hasArrow: boolean; relationLabel?: string }) {
   const hasChain = node.chain && node.chain.length > 0;
   const [open, setOpen] = useState(false);
 
@@ -1387,7 +1395,12 @@ function LogicChainNodeView({ node, hasArrow }: { node: LogicNode; hasArrow: boo
     <div>
       <div className="flex items-start gap-2">
         <div className="flex w-5 shrink-0 flex-col items-center pt-1">
-          {hasArrow && <ArrowRight className="h-3 w-3 text-slate-300" />}
+          {hasArrow && relationLabel && (
+            <span className={`inline-block whitespace-nowrap rounded border px-1 py-px text-[10px] font-medium leading-normal ${relationColor(relationLabel)}`}>
+              {relationLabel}
+            </span>
+          )}
+          {hasArrow && !relationLabel && <ArrowRight className="h-3 w-3 text-slate-300" />}
         </div>
         <div className="min-w-0 flex-1">
           <button
@@ -1407,7 +1420,7 @@ function LogicChainNodeView({ node, hasArrow }: { node: LogicNode; hasArrow: boo
           </button>
           {open && hasChain && (
             <div className="ml-5 mt-1.5 border-l-2 border-slate-100 pl-3">
-              <LogicChainView nodes={node.chain!} />
+              <LogicChainView nodes={node.chain!} relationLabel={node.relationLabel} />
             </div>
           )}
         </div>
@@ -1416,11 +1429,11 @@ function LogicChainNodeView({ node, hasArrow }: { node: LogicNode; hasArrow: boo
   );
 }
 
-function LogicChainView({ nodes }: { nodes: LogicNode[] }) {
+function LogicChainView({ nodes, relationLabel }: { nodes: LogicNode[]; relationLabel?: string }) {
   return (
     <div className="space-y-1.5">
       {nodes.map((node, i) => (
-        <LogicChainNodeView key={i} node={node} hasArrow={i > 0} />
+        <LogicChainNodeView key={i} node={node} hasArrow={i > 0} relationLabel={i > 0 ? relationLabel : undefined} />
       ))}
     </div>
   );
@@ -1539,10 +1552,17 @@ function LogicExtractorPanel() {
                   const hasChain = node.chain && node.chain.length > 0;
                   return (
                     <div key={i} className="rounded border border-slate-200 bg-white p-2">
-                      <p className="mb-1 text-xs font-medium text-slate-700">{node.text}</p>
+                      <div className="mb-1 flex items-center gap-2">
+                        <p className="text-xs font-medium text-slate-700">{node.text}</p>
+                        {node.relationLabel && (
+                          <span className={`inline-block whitespace-nowrap rounded border px-1 py-px text-[10px] font-medium leading-normal ${relationColor(node.relationLabel)}`}>
+                            {node.relationLabel}
+                          </span>
+                        )}
+                      </div>
                       {hasChain && (
                         <div className="border-l-2 border-amber-200 pl-3">
-                          <LogicChainView nodes={node.chain!} />
+                          <LogicChainView nodes={node.chain!} relationLabel={node.relationLabel} />
                         </div>
                       )}
                       {!hasChain && (

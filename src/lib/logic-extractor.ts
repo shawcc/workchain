@@ -5,6 +5,8 @@
  */
 export type LogicNode = {
   text: string;
+  /** 关系标签，如 "→ 因为"、"⇒ 如果"、"⇏ 但是"。无标签 = 叶子节点 */
+  relationLabel?: string;
   chain?: LogicNode[];
 };
 
@@ -25,15 +27,16 @@ type LogicRelation =
  */
 interface LogicPattern {
   relation: LogicRelation;
-  label: string; // 显示的箭头符号
-  // 每个 pattern 是一组正则，捕获组: 1=前置部分, 2=后置部分
+  arrow: string;       // 箭头符号
+  connectorWord: string; // 中文连接词标签
   patterns: RegExp[];
 }
 
 const LOGIC_PATTERNS: LogicPattern[] = [
   {
     relation: "causal",
-    label: "→",
+    arrow: "→",
+    connectorWord: "因为",
     patterns: [
       /因为(.+?)[，,]\s*所以(.+)/,
       /由于(.+?)[，,]\s*因此(.+)/,
@@ -47,7 +50,8 @@ const LOGIC_PATTERNS: LogicPattern[] = [
   },
   {
     relation: "conditional",
-    label: "⇒",
+    arrow: "⇒",
+    connectorWord: "如果",
     patterns: [
       /如果(.+?)[，,]\s*那么(.+)/,
       /假如(.+?)[，,]\s*就(.+)/,
@@ -58,7 +62,8 @@ const LOGIC_PATTERNS: LogicPattern[] = [
   },
   {
     relation: "transitional",
-    label: "⇏",
+    arrow: "⇏",
+    connectorWord: "但是",
     patterns: [
       /虽然(.+?)[，,]\s*但是(.+)/,
       /尽管(.+?)[，,]\s*可是(.+)/,
@@ -71,7 +76,8 @@ const LOGIC_PATTERNS: LogicPattern[] = [
   },
   {
     relation: "progressive",
-    label: "→",
+    arrow: "→",
+    connectorWord: "并且",
     patterns: [
       /不仅(.+?)[，,]\s*而且(.+)/,
       /不但(.+?)[，,]\s*还(.+)/,
@@ -83,7 +89,8 @@ const LOGIC_PATTERNS: LogicPattern[] = [
   },
   {
     relation: "sequential",
-    label: "→",
+    arrow: "→",
+    connectorWord: "然后",
     patterns: [
       /首先(.+?)[，,]\s*然后(.+)/,
       /先(.+?)[，,]\s*再(.+)/,
@@ -94,7 +101,8 @@ const LOGIC_PATTERNS: LogicPattern[] = [
   },
   {
     relation: "purpose",
-    label: "→",
+    arrow: "→",
+    connectorWord: "为了",
     patterns: [
       /为了(.+?)[，,]\s*需要(.+)/,
       /为(.+?)[，,]\s*应(.+)/,
@@ -104,7 +112,8 @@ const LOGIC_PATTERNS: LogicPattern[] = [
   },
   {
     relation: "concession",
-    label: "⇒",
+    arrow: "⇒",
+    connectorWord: "否则",
     patterns: [
       /除非(.+?)[，,]\s*否则(.+)/,
       /除非(.+?)[，,]\s*不然(.+)/,
@@ -144,6 +153,7 @@ function tryMatchPattern(text: string): LogicNode | null {
     const conclusion = conclusionMatch[1].trim();
     return {
       text: `→ ${conclusion}`,
+      relationLabel: "→ 因此",
       chain: [{ text: conclusion }],
     };
   }
@@ -154,13 +164,15 @@ function tryMatchPattern(text: string): LogicNode | null {
       if (match) {
         const a = match[1].trim();
         const b = match[2].trim();
+        const relationLabel = `${pattern.arrow} ${pattern.connectorWord}`;
 
         // 递归提取 A 和 B 内部的子逻辑
         const aChain = extractLogicChain(a);
         const bChain = extractLogicChain(b);
 
         return {
-          text: `${a} ${pattern.label} ${b}`,
+          text: `${a} ${pattern.arrow} ${b}`,
+          relationLabel,
           chain: [...aChain, ...bChain],
         };
       }
@@ -239,13 +251,13 @@ export function extractFlatLogicChain(text: string): LogicNode[] {
  */
 export function classifyLogicRelations(text: string): Array<{
   relation: LogicRelation;
-  label: string;
+  relationLabel: string;
   nodes: LogicNode[];
 }> {
   const sentences = splitSentences(text);
   const result: Array<{
     relation: LogicRelation;
-    label: string;
+    relationLabel: string;
     nodes: LogicNode[];
   }> = [];
 
@@ -258,7 +270,7 @@ export function classifyLogicRelations(text: string): Array<{
           const b = match[2].trim();
           result.push({
             relation: pattern.relation,
-            label: pattern.label,
+            relationLabel: `${pattern.arrow} ${pattern.connectorWord}`,
             nodes: [{ text: a }, { text: b }],
           });
           break;
