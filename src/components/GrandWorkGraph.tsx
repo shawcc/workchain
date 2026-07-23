@@ -7,11 +7,14 @@ import {
   ChevronRight,
   GitBranch,
   Plus,
+  RefreshCw,
   RotateCcw,
   ShieldCheck,
   Target,
   AlertTriangle,
+  Wand2,
 } from "lucide-react";
+import { extractLogicChain } from "../lib/logic-extractor";
 
 /* ── 数据模型 ── */
 
@@ -1033,6 +1036,8 @@ export function GrandWorkGraph() {
         <GoalTree selectedId={selectedId} onSelect={setSelectedId} />
         <GoalDetail key={selected.id} node={selected} />
       </div>
+
+      <LogicExtractorPanel />
     </section>
   );
 }
@@ -1426,4 +1431,131 @@ function LogicChainView({ nodes }: { nodes: LogicNode[] }) {
 function useExpanded() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   return [expandedId, setExpandedId] as const;
+}
+
+/* ── 逻辑提取引擎演示面板 ── */
+
+const DEMO_TEXT = [
+  "因为办公工具断裂，所以需要统一的协作平台。",
+  "当前办公以文档为中心，但文档无法被 Agent 直接执行和推理，因此办公系统应以可推理对象为中心。",
+  "首先分析用户需求，然后拆解为可执行的目标，接着分配给对应的 Agent 执行。",
+  "如果用户体验不好，那么用户就会流失。所以我们需要在设计阶段就引入用户测试。",
+  "聊天承载讨论，但状态不可追踪。文档承载说明，但不可执行。项目管理承载任务，但缺少决策上下文。因此，三个工具各管一段，链路断裂。",
+];
+
+function LogicExtractorPanel() {
+  const [input, setInput] = useState("");
+  const [result, setResult] = useState<LogicNode[] | null>(null);
+  const [expanded, setExpanded] = useState(false);
+
+  const handleExtract = () => {
+    if (!input.trim()) return;
+    setResult(extractLogicChain(input));
+  };
+
+  const handleDemo = (text: string) => {
+    setInput(text);
+    setResult(extractLogicChain(text));
+  };
+
+  return (
+    <section className="rounded-lg border border-slate-200 bg-white">
+      <button
+        className="flex w-full items-center justify-between px-4 py-3 text-left"
+        onClick={() => setExpanded(!expanded)}
+      >
+        <div className="flex items-center gap-2">
+          <Wand2 className="h-4 w-4 text-amber-500" />
+          <h2 className="text-sm font-semibold text-slate-900">逻辑提取引擎</h2>
+          <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-500">原型</span>
+        </div>
+        <ChevronRight className={`h-4 w-4 text-slate-400 transition-transform ${expanded ? "rotate-90" : ""}`} />
+      </button>
+
+      {expanded && (
+        <div className="border-t border-slate-200 px-4 py-3">
+          <p className="mb-3 text-xs leading-5 text-slate-500">
+            输入一段中文自然语言，引擎自动识别逻辑连词（因为…所以、如果…那么、虽然…但是等），提取为 A → B → C 的逻辑链。
+            <br />
+            这是 WorkGraph 的底层能力：任意文本先解析出逻辑结构，再基于逻辑结构进行推理和拆解。
+          </p>
+
+          {/* 示例按钮 */}
+          <div className="mb-3 flex flex-wrap gap-1.5">
+            <span className="text-[11px] text-slate-400">试试：</span>
+            {DEMO_TEXT.map((t, i) => (
+              <button
+                key={i}
+                className="rounded border border-slate-200 px-2 py-0.5 text-[11px] text-slate-600 transition hover:border-slate-300 hover:bg-slate-50"
+                onClick={() => handleDemo(t)}
+              >
+                {t.length > 28 ? t.slice(0, 28) + "…" : t}
+              </button>
+            ))}
+          </div>
+
+          {/* 输入区 */}
+          <div className="flex gap-2">
+            <textarea
+              className="min-h-[60px] flex-1 resize-none rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:border-slate-500 focus:outline-none"
+              placeholder="输入一段中文文本，例如：因为办公工具断裂，所以需要统一的协作平台。"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                  handleExtract();
+                }
+              }}
+            />
+            <button
+              className="inline-flex shrink-0 items-center gap-1.5 self-start rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white transition hover:bg-slate-800 disabled:opacity-50"
+              onClick={handleExtract}
+              disabled={!input.trim()}
+            >
+              <Wand2 className="h-4 w-4" />
+              提取逻辑
+            </button>
+          </div>
+
+          {/* 结果区 */}
+          {result && result.length > 0 && (
+            <div className="mt-3 rounded-md border border-slate-200 bg-slate-50 p-3">
+              <div className="mb-2 flex items-center justify-between">
+                <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400">提取结果</span>
+                <button
+                  className="inline-flex items-center gap-1 text-[11px] text-slate-400 transition hover:text-slate-600"
+                  onClick={() => {
+                    setInput("");
+                    setResult(null);
+                  }}
+                >
+                  <RefreshCw className="h-3 w-3" />
+                  清除
+                </button>
+              </div>
+
+              <div className="space-y-2">
+                {result.map((node, i) => {
+                  const hasChain = node.chain && node.chain.length > 0;
+                  return (
+                    <div key={i} className="rounded border border-slate-200 bg-white p-2">
+                      <p className="mb-1 text-xs font-medium text-slate-700">{node.text}</p>
+                      {hasChain && (
+                        <div className="border-l-2 border-amber-200 pl-3">
+                          <LogicChainView nodes={node.chain!} />
+                        </div>
+                      )}
+                      {!hasChain && (
+                        <p className="text-[11px] text-slate-400">（无逻辑连接词，作为原子节点）</p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </section>
+  );
 }
