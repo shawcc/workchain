@@ -1,3 +1,8 @@
+import type {
+  DecompositionDraft,
+  Goal,
+} from "@/data/stepwise-model";
+
 export type AgentProposal = {
   proposedDraft: string;
   rationale: string;
@@ -79,6 +84,53 @@ export async function requestAgentProposal(
     rationale: payload.rationale,
     questions: payload.questions ?? [],
     provider: payload.provider ?? "unknown",
+  };
+}
+
+export async function requestDecompositionAgent(
+  goal: Goal,
+): Promise<DecompositionDraft> {
+  const response = await fetch("/api/agent", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      kind: "decomposition",
+      goal: {
+        id: goal.id,
+        title: goal.title,
+        intent: goal.intent,
+        dri: `${goal.dri.name}｜${goal.dri.role}`,
+        timebox: goal.timebox,
+        successCriteria: goal.successCriteria,
+        constraints: goal.constraints,
+        autonomy: goal.autonomy,
+      },
+    }),
+  });
+
+  const payload = (await response.json().catch(() => ({}))) as Partial<
+    DecompositionDraft
+  > & { error?: string; provider?: string };
+  if (!response.ok) {
+    throw new Error(payload.error ?? `拆解 Agent 请求失败（${response.status}）`);
+  }
+  if (
+    !payload.question ||
+    !payload.logic ||
+    !payload.completeness ||
+    !Array.isArray(payload.proposedGoals)
+  ) {
+    throw new Error("拆解 Agent 返回的数据结构不完整");
+  }
+
+  return {
+    question: payload.question,
+    logic: payload.logic,
+    completeness: payload.completeness,
+    boundaryRules: payload.boundaryRules ?? [],
+    alternatives: payload.alternatives ?? [],
+    openQuestions: payload.openQuestions ?? [],
+    proposedGoals: payload.proposedGoals,
   };
 }
 

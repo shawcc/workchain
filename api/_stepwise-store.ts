@@ -7,6 +7,7 @@ import {
   type Action,
   type Actor,
   type CreateGoalInput,
+  type DecompositionDraft,
   type DecompositionReview,
   type Goal,
   type Relation,
@@ -257,12 +258,37 @@ function nextRelationId(relations: Relation[]): string {
   return `R${max + 1}`;
 }
 
-function nextGoalId(goals: Record<string, Goal>): string {
-  const max = Object.keys(goals).reduce((current, id) => {
+function reservedGoalIds(store: StepwiseStore): string[] {
+  return [
+    ...Object.keys(store.goals),
+    ...store.decompositionReviews.flatMap((review) =>
+      review.proposedGoals.map((goal) => goal.proposedId),
+    ),
+  ];
+}
+
+function nextGoalId(store: StepwiseStore): string {
+  const max = reservedGoalIds(store).reduce((current, id) => {
     const match = /^G(\d+)$/.exec(id);
     return match ? Math.max(current, Number(match[1])) : current;
   }, 0);
   return `G${max + 1}`;
+}
+
+function nextDecompositionId(reviews: DecompositionReview[]): string {
+  const max = reviews.reduce((current, review) => {
+    const match = /^D(\d+)$/.exec(review.id);
+    return match ? Math.max(current, Number(match[1])) : current;
+  }, 0);
+  return `D${max + 1}`;
+}
+
+function nextProposedGoalIds(store: StepwiseStore, count: number): string[] {
+  const max = reservedGoalIds(store).reduce((current, id) => {
+    const match = /^G(\d+)$/.exec(id);
+    return match ? Math.max(current, Number(match[1])) : current;
+  }, 0);
+  return Array.from({ length: count }, (_, index) => `G${max + index + 1}`);
 }
 
 export function getWorkspaceSnapshot(): StepwiseWorkspaceSnapshot {
@@ -301,7 +327,7 @@ export function createWorkspaceGoal(
     throw new Error("Goal 至少需要一条成功标准。");
   }
 
-  const id = nextGoalId(store.goals);
+  const id = nextGoalId(store);
   store.goals[id] = {
     id,
     title,
@@ -325,6 +351,99 @@ export function createWorkspaceGoal(
       input.autonomy.trim() ||
       "Agent 可推进可逆工作；范围、高风险操作和最终验收由 Human DRI 决策。",
   };
+  touch(store);
+  return snapshot(store);
+}
+
+export function createWorkspaceDecomposition(
+  goalId: string,
+  draft: DecompositionDraft,
+): StepwiseWorkspaceSnapshot {
+  const store = getStore();
+  const parent = store.goals[goalId];
+  if (!parent) throw new Error(`Goal ${goalId} 不存在。`);
+  if (parent.status === "accepted") {
+    throw new Error(`Goal ${goalId} 已达成，不能再发起拆解。`);
+  }
+  if (store.decompositionReviews.some((review) => review.goalId === goalId)) {
+    throw new Error(`Goal ${goalId} 已有 WISESTEP 拆解记录。`);
+  }
+  if (Object.values(store.goals).some((goal) => goal.parentId === goalId)) {
+    throw new Error(`Goal ${goalId} 已有下级 Goal。`);
+  }
+  if (store.actions.some((action) => action.goalId === goalId)) {
+    throw new Error(
+      `Goal ${goalId} 已有 Action，不能同时转为组合 Goal。请先处理现有 Action。`,
+    );
+  }
+  if (draft.proposedGoals.length < 2 || draft.proposedGoals.length > 5) {
+    throw new Error("WISESTEP 拆解必须包含 2 至 5 个候选 Goal。");
+  }
+
+  const proposedIds = nextProposedGoalIds(
+    store,
+    draft.proposedGoals.length,
+  );
+  const id = nextDecompositionId(store.decompositionReviews);
+  const now = new Date().toISOString();
+  const createdBy = `${actors.reasoning.name} · ${actors.reasoning.version ?? "current"}`;
+  const review: DecompositionReview = {
+    id,
+    goalId,
+    childGoalIds: [],
+    proposedGoals: draft.proposedGoals.map((goal, index) => ({
+      proposedId: proposedIds[index],
+      title: goal.title.trim(),
+      intent: goal.intent.trim(),
+      dri: structuredClone(parent.dri),
+      timebox: structuredClone(parent.timebox),
+      successCriteria: goal.successCriteria.map((item) => item.trim()),
+      constraints: goal.constraints.map((item) => item.trim()),
+      autonomy: parent.autonomy,
+    })),
+    question: draft.question.trim(),
+    logic: draft.logic.trim(),
+    completeness: draft.completeness.trim(),
+    boundaryRules: draft.boundaryRules.map((item) => item.trim()),
+    alternatives: structuredClone(draft.alternatives),
+    openQuestions: draft.openQuestions.map((item) => item.trim()),
+    status: "proposed",
+    createdBy,
+    createdAt: now,
+    events: [
+      {
+        id: `${id}-ANALYSIS`,
+        actor: createdBy,
+        type: "analysis",
+        content: draft.logic.trim(),
+        createdAt: now,
+      },
+      {
+        id: `${id}-PROPOSAL`,
+        actor: createdBy,
+        type: "proposal",
+        content: `提出 ${draft.proposedGoals.length} 个候选 Goal；当前仅为 Proposal，等待 ${parent.dri.name} 确认。`,
+        createdAt: now,
+      },
+    ],
+  };
+
+  if (
+    !review.question ||
+    !review.logic ||
+    !review.completeness ||
+    review.proposedGoals.some(
+      (goal) =>
+        !goal.title ||
+        !goal.intent ||
+        goal.successCriteria.length === 0 ||
+        goal.successCriteria.some((criterion) => !criterion),
+    )
+  ) {
+    throw new Error("WISESTEP 拆解提案内容不完整。");
+  }
+
+  store.decompositionReviews.push(review);
   touch(store);
   return snapshot(store);
 }
@@ -545,6 +664,14 @@ export function confirmDecompositionProposal(
 
   const now = new Date().toISOString();
   const proposedGoals = structuredClone(proposal.proposedGoals);
+  const conflictingGoal = proposedGoals.find(
+    (proposed) => store.goals[proposed.proposedId],
+  );
+  if (conflictingGoal) {
+    throw new Error(
+      `候选 Goal ID ${conflictingGoal.proposedId} 已被占用，请重新生成拆解提案。`,
+    );
+  }
   for (const proposed of proposedGoals) {
     store.goals[proposed.proposedId] = {
       ...proposed,

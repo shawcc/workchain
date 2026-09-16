@@ -1,3 +1,8 @@
+import type {
+  DecompositionDraft,
+  GoalTimebox,
+} from "../src/data/stepwise-model.js";
+
 export type AgentRequest = {
   goal: {
     id: string;
@@ -48,6 +53,24 @@ export type ExecutionResponse = {
   }>;
   needsDecision: boolean;
   decisionQuestion?: string;
+  provider: string;
+};
+
+export type DecompositionAgentRequest = {
+  kind: "decomposition";
+  goal: {
+    id: string;
+    title: string;
+    intent: string;
+    dri: string;
+    timebox: GoalTimebox;
+    successCriteria: string[];
+    constraints: string[];
+    autonomy: string;
+  };
+};
+
+export type DecompositionAgentResponse = DecompositionDraft & {
   provider: string;
 };
 
@@ -110,6 +133,92 @@ function isExecutionRequest(value: unknown): value is ExecutionRequest {
       request.approvedBy &&
       ["low", "medium", "high"].includes(request.riskLevel ?? ""),
   );
+}
+
+function isDecompositionRequest(
+  value: unknown,
+): value is DecompositionAgentRequest {
+  if (!value || typeof value !== "object") return false;
+  const request = value as Partial<DecompositionAgentRequest>;
+  return Boolean(
+    request.kind === "decomposition" &&
+      request.goal?.id &&
+      request.goal.title &&
+      request.goal.intent &&
+      request.goal.dri &&
+      request.goal.timebox?.startsAt &&
+      request.goal.timebox.dueAt &&
+      Array.isArray(request.goal.successCriteria) &&
+      Array.isArray(request.goal.constraints),
+  );
+}
+
+function normalizeStringArray(value: unknown, maximum: number): string[] {
+  return Array.isArray(value)
+    ? value
+        .map((item) => String(item).trim())
+        .filter(Boolean)
+        .slice(0, maximum)
+    : [];
+}
+
+function normalizeDecompositionResponse(
+  value: unknown,
+  provider: string,
+): DecompositionAgentResponse {
+  if (!value || typeof value !== "object") {
+    throw new Error("拆解 Agent 返回结构无效");
+  }
+  const response = value as Partial<DecompositionDraft>;
+  if (
+    !response.question ||
+    !response.logic ||
+    !response.completeness ||
+    !Array.isArray(response.proposedGoals)
+  ) {
+    throw new Error("拆解 Agent 返回缺少问题、逻辑、完整性或候选 Goal");
+  }
+
+  const proposedGoals = response.proposedGoals
+    .slice(0, 5)
+    .map((goal) => ({
+      title: String(goal?.title ?? "").trim(),
+      intent: String(goal?.intent ?? "").trim(),
+      successCriteria: normalizeStringArray(goal?.successCriteria, 6),
+      constraints: normalizeStringArray(goal?.constraints, 6),
+    }))
+    .filter(
+      (goal) =>
+        goal.title && goal.intent && goal.successCriteria.length > 0,
+    );
+  if (proposedGoals.length < 2) {
+    throw new Error("拆解 Agent 至少需要返回 2 个有效候选 Goal");
+  }
+
+  const alternatives = Array.isArray(response.alternatives)
+    ? response.alternatives
+        .slice(0, 5)
+        .map((alternative) => ({
+          title: String(alternative?.title ?? "").trim(),
+          decision:
+            alternative?.decision === "merged"
+              ? ("merged" as const)
+              : ("rejected" as const),
+          rationale: String(alternative?.rationale ?? "").trim(),
+        }))
+        .filter((alternative) => alternative.title && alternative.rationale)
+    : [];
+
+  return {
+    question: String(response.question).trim(),
+    logic: String(response.logic).trim(),
+    completeness: String(response.completeness).trim(),
+    boundaryRules: normalizeStringArray(response.boundaryRules, 6),
+    alternatives,
+    openQuestions: normalizeStringArray(response.openQuestions, 5),
+    proposedGoals,
+    provider,
+  };
 }
 
 function normalizeExecutionResponse(
@@ -227,6 +336,32 @@ export async function runAgent(
 
   const result = await requestModelJson(systemPrompt, userPrompt, environment);
   return normalizeResponse(result.value, result.provider);
+}
+
+export async function runDecompositionAgent(
+  value: unknown,
+  environment: AgentEnvironment,
+): Promise<DecompositionAgentResponse> {
+  if (!isDecompositionRequest(value)) {
+    throw new Error("请求缺少可拆解的 Goal 上下文");
+  }
+
+  const systemPrompt = [
+    "你是 Stepwise Reasoning Agent，负责把一个叶子 Goal 拆成可分别验收的下级 Goal 提案。",
+    "你只提出 Proposal，不得声称已创建 Goal、Action 或完成现实操作；最终确认权属于 Human DRI。",
+    "按独立结果拆分，不按活动清单、部门或实现步骤拆分。每个候选 Goal 必须共同穷尽上级成功标准，且彼此边界清晰。",
+    "返回 2 至 5 个候选 Goal。候选 Goal 不生成 ID、DRI、期限或授权边界，这些由系统继承并由 Human DRI 审查。",
+    "不得虚构外部事实；不确定内容放入 openQuestions。",
+    "只返回 JSON，不要使用 Markdown 代码块。",
+    'JSON 格式：{"question":"本次拆解要回答的问题","logic":"从上级到下级的拆解逻辑","completeness":"为何这些候选共同完整覆盖上级目标","boundaryRules":["边界规则"],"alternatives":[{"title":"考虑过但未单列的方案","decision":"merged|rejected","rationale":"原因"}],"openQuestions":["待复查问题"],"proposedGoals":[{"title":"结果型标题","intent":"达成后发生的变化","successCriteria":["可观察、可验收标准"],"constraints":["必要约束"]}]}',
+  ].join("\n");
+
+  const result = await requestModelJson(
+    systemPrompt,
+    JSON.stringify({ goal: value.goal }, null, 2),
+    environment,
+  );
+  return normalizeDecompositionResponse(result.value, result.provider);
 }
 
 export async function runExecutionAgent(

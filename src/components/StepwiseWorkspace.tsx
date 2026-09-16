@@ -12,6 +12,7 @@ import {
   GitBranch,
   Link2,
   ListTree,
+  LoaderCircle,
   Map,
   Network,
   Play,
@@ -40,6 +41,7 @@ import {
 } from "@/lib/stepwise-workspace-storage";
 import {
   confirmDecomposition as confirmServerDecomposition,
+  createDecomposition as createServerDecomposition,
   createGoal as createServerGoal,
   fetchWorkspace,
   importWorkspace,
@@ -48,7 +50,10 @@ import {
   updateRelation as updateServerRelation,
   type ServerWorkspaceSnapshot,
 } from "@/lib/stepwise-workspace-api";
-import { requestExecutionAgent } from "@/lib/workgraph-agent";
+import {
+  requestDecompositionAgent,
+  requestExecutionAgent,
+} from "@/lib/workgraph-agent";
 
 type Selection =
   | { type: "goal"; id: string }
@@ -159,6 +164,20 @@ function getGoalChildren(
   return Object.values(goalRecords).filter((goal) => goal.parentId === goalId);
 }
 
+function canStartDecomposition(
+  goal: Goal,
+  goalRecords: Record<string, Goal>,
+  actions: Action[],
+  reviews: DecompositionReview[],
+): boolean {
+  return (
+    goal.status !== "accepted" &&
+    getGoalChildren(goal.id, goalRecords).length === 0 &&
+    !actions.some((action) => action.goalId === goal.id) &&
+    !reviews.some((review) => review.goalId === goal.id)
+  );
+}
+
 function getGoalPath(
   goalId: string,
   goalRecords: Record<string, Goal>,
@@ -260,6 +279,8 @@ export function StepwiseWorkspace() {
   });
   const [showCreateGoal, setShowCreateGoal] = useState(false);
   const [focusedGoalId, setFocusedGoalId] = useState<string | null>(null);
+  const [decompositionStartingGoalId, setDecompositionStartingGoalId] =
+    useState<string | null>(null);
   const [workspaceNotice, setWorkspaceNotice] = useState<string | null>(null);
   const [workspaceSyncing, setWorkspaceSyncing] = useState(true);
   const [workspaceError, setWorkspaceError] = useState<string | null>(null);
@@ -383,6 +404,45 @@ export function StepwiseWorkspace() {
     if (rootGoalId) setActiveRootGoalId(rootGoalId);
     setSelection({ type: "action", id });
   };
+  const startDecomposition = async (goalId: string) => {
+    const goal = goalRecords[goalId];
+    if (
+      !goal ||
+      !canStartDecomposition(
+        goal,
+        goalRecords,
+        actions,
+        decompositionReviews,
+      )
+    ) {
+      setWorkspaceError("这个 Goal 当前不能发起 WISESTEP 拆解。");
+      return;
+    }
+
+    setDecompositionStartingGoalId(goalId);
+    setWorkspaceError(null);
+    try {
+      const draft = await requestDecompositionAgent(goal);
+      const workspace = await commitWorkspace(() =>
+        createServerDecomposition(goalId, draft),
+      );
+      if (
+        workspace.decompositionReviews.some(
+          (review) => review.goalId === goalId,
+        )
+      ) {
+        setSelectedRelationId(null);
+        setSelectedDecompositionGoalId(goalId);
+        setWorkspaceNotice("WISESTEP 拆解提案已生成，等待 DRI 确认");
+      }
+    } catch (error) {
+      setWorkspaceError(
+        error instanceof Error ? error.message : "WISESTEP 拆解失败",
+      );
+    } finally {
+      setDecompositionStartingGoalId(null);
+    }
+  };
 
   return (
     <main className="flex h-full min-h-0 flex-col overflow-hidden rounded-lg border border-slate-300 bg-white shadow-sm sm:min-h-[760px]">
@@ -428,6 +488,9 @@ export function StepwiseWorkspace() {
               decompositionReviews={decompositionReviews}
               goal={goalRecords[selection.id]}
               goalRecords={goalRecords}
+              decompositionStarting={
+                decompositionStartingGoalId === selection.id
+              }
               onAction={openAction}
               onBack={() => setSelection(null)}
               onDecomposition={(id) => {
@@ -435,6 +498,7 @@ export function StepwiseWorkspace() {
                 setSelectedDecompositionGoalId(id);
               }}
               onGoal={openGoal}
+              onStartDecomposition={startDecomposition}
               onRelation={(id) => {
                 setSelectedDecompositionGoalId(null);
                 setSelectedRelationId(id);
@@ -471,12 +535,14 @@ export function StepwiseWorkspace() {
               setSelectedDecompositionGoalId(id);
             }}
             onGoal={openGoal}
+            onStartDecomposition={startDecomposition}
             onRelation={(id) => {
               setSelectedDecompositionGoalId(null);
               setSelectedRelationId(id);
             }}
             relations={relations}
             showActions={showActions}
+            startingDecompositionGoalId={decompositionStartingGoalId}
           />
         )}
 
@@ -952,8 +1018,10 @@ function WorkMap({
   onDecomposition,
   onGoal,
   onRelation,
+  onStartDecomposition,
   relations,
   showActions,
+  startingDecompositionGoalId,
 }: {
   actions: Action[];
   activeRootGoalId: string | null;
@@ -965,8 +1033,10 @@ function WorkMap({
   onDecomposition: (goalId: string) => void;
   onGoal: (id: string) => void;
   onRelation: (id: string) => void;
+  onStartDecomposition: (goalId: string) => Promise<void>;
   relations: Relation[];
   showActions: boolean;
+  startingDecompositionGoalId: string | null;
 }) {
   const mapViewportRef = useRef<HTMLDivElement>(null);
   const projectGoalIds = activeRootGoalId
@@ -1051,8 +1121,15 @@ function WorkMap({
   const canvasHeight = showActions && visibleActions.length
     ? actionStartY + actionRows * 140 + 24
     : deepestGoalBottom + 80;
-  const visibleReviews = decompositionReviews.filter((review) =>
-    projectGoalIds.has(review.goalId),
+  const visibleDecompositionGoals = visibleGoals.filter(
+    (goal) =>
+      decompositionReviews.some((review) => review.goalId === goal.id) ||
+      canStartDecomposition(
+        goal,
+        goalRecords,
+        actions,
+        decompositionReviews,
+      ),
   );
   const focusPosition = focusedGoalId
     ? computedGoalPositions[focusedGoalId]
@@ -1247,27 +1324,44 @@ function WorkMap({
             <MapLane label="ACTION" y={actionStartY - 34} />
           ) : null}
 
-          {visibleReviews.map((review) => {
-            const goalPosition = computedGoalPositions[review.goalId];
+          {visibleDecompositionGoals.map((goal) => {
+            const review = decompositionReviews.find(
+              (item) => item.goalId === goal.id,
+            );
+            const goalPosition = computedGoalPositions[goal.id];
             if (!goalPosition) return null;
+            const starting = startingDecompositionGoalId === goal.id;
+            const label = review
+              ? `查看 ${goal.title} 的 WISESTEP 拆解讨论`
+              : `用 WISESTEP 拆解 ${goal.title}`;
             return (
               <button
-                aria-label={`查看 ${goalRecords[review.goalId].title} 的 WISESTEP 拆解讨论`}
+                aria-label={label}
                 className={`absolute z-30 grid h-9 w-9 -translate-x-1/2 place-items-center rounded-md border shadow-sm transition hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${
-                  review.status === "confirmed"
+                  review?.status === "confirmed"
                     ? "border-cyan-300 bg-white hover:border-cyan-600 focus-visible:outline-cyan-600"
-                    : "border-amber-300 bg-amber-50 hover:border-amber-600 focus-visible:outline-amber-600"
+                    : review
+                      ? "border-amber-300 bg-amber-50 hover:border-amber-600 focus-visible:outline-amber-600"
+                      : "border-cyan-400 bg-cyan-50 hover:border-cyan-700 focus-visible:outline-cyan-700"
                 }`}
-                key={review.id}
-                onClick={() => onDecomposition(review.goalId)}
+                disabled={starting}
+                key={review?.id ?? `start-${goal.id}`}
+                onClick={() => {
+                  if (review) onDecomposition(goal.id);
+                  else void onStartDecomposition(goal.id);
+                }}
                 style={{
                   left: goalPosition.x + goalPosition.width / 2,
                   top: goalPosition.y + goalPosition.height - 18,
                 }}
-                title="查看 WISESTEP 拆解讨论"
+                title={review ? "查看 WISESTEP 拆解讨论" : "发起 WISESTEP 拆解"}
                 type="button"
               >
-                <WiseStepMark pending={review.status === "proposed"} />
+                <WiseStepMark
+                  loading={starting}
+                  pending={review?.status === "proposed"}
+                  startable={!review}
+                />
               </button>
             );
           })}
@@ -1343,32 +1437,49 @@ function WorkMap({
   );
 }
 
-function WiseStepMark({ pending = false }: { pending?: boolean }) {
+function WiseStepMark({
+  loading = false,
+  pending = false,
+  startable = false,
+}: {
+  loading?: boolean;
+  pending?: boolean;
+  startable?: boolean;
+}) {
   return (
     <span className="relative grid h-7 w-7 place-items-center rounded bg-slate-950">
-      <svg
-        aria-hidden="true"
-        className="h-[19px] w-[19px]"
-        fill="none"
-        viewBox="0 0 24 24"
-      >
-        <circle cx="5.5" cy="5.5" fill="#fff" r="2" />
-        <circle cx="18.5" cy="5.5" fill="#fff" r="2" />
-        <path
-          d="M5.5 8v2.25H12m6.5-2.25v2.25H12v2.4"
-          stroke="#67e8f9"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth="1.75"
-        />
-        <path
-          d="m12 12.25 3.25 3.25L12 18.75 8.75 15.5 12 12.25Z"
-          fill="#67e8f9"
-        />
-        <circle cx="12" cy="15.5" fill="#0f172a" r="1.15" />
-      </svg>
+      {loading ? (
+        <LoaderCircle className="h-[19px] w-[19px] animate-spin text-cyan-300" />
+      ) : (
+        <svg
+          aria-hidden="true"
+          className="h-[19px] w-[19px]"
+          fill="none"
+          viewBox="0 0 24 24"
+        >
+          <circle cx="5.5" cy="5.5" fill="#fff" r="2" />
+          <circle cx="18.5" cy="5.5" fill="#fff" r="2" />
+          <path
+            d="M5.5 8v2.25H12m6.5-2.25v2.25H12v2.4"
+            stroke="#67e8f9"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="1.75"
+          />
+          <path
+            d="m12 12.25 3.25 3.25L12 18.75 8.75 15.5 12 12.25Z"
+            fill="#67e8f9"
+          />
+          <circle cx="12" cy="15.5" fill="#0f172a" r="1.15" />
+        </svg>
+      )}
       {pending ? (
         <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full border-2 border-amber-50 bg-amber-500" />
+      ) : null}
+      {startable && !loading ? (
+        <span className="absolute -right-1.5 -top-1.5 grid h-3.5 w-3.5 place-items-center rounded-full border border-white bg-cyan-600 text-[10px] font-bold leading-none text-white">
+          +
+        </span>
       ) : null}
     </span>
   );
@@ -1523,6 +1634,7 @@ function StatusBadge({
 
 function GoalDetail({
   actions,
+  decompositionStarting,
   decompositionReviews,
   goal,
   goalRecords,
@@ -1531,9 +1643,11 @@ function GoalDetail({
   onDecomposition,
   onGoal,
   onRelation,
+  onStartDecomposition,
   relations,
 }: {
   actions: Action[];
+  decompositionStarting: boolean;
   decompositionReviews: DecompositionReview[];
   goal: Goal;
   goalRecords: Record<string, Goal>;
@@ -1542,6 +1656,7 @@ function GoalDetail({
   onDecomposition: (goalId: string) => void;
   onGoal: (id: string) => void;
   onRelation: (id: string) => void;
+  onStartDecomposition: (goalId: string) => Promise<void>;
   relations: Relation[];
 }) {
   const children = getGoalChildren(goal.id, goalRecords);
@@ -1554,6 +1669,12 @@ function GoalDetail({
   const isComposite = children.length > 0;
   const hasDecompositionReview = decompositionReviews.some(
     (review) => review.goalId === goal.id,
+  );
+  const canDecompose = canStartDecomposition(
+    goal,
+    goalRecords,
+    actions,
+    decompositionReviews,
   );
 
   return (
@@ -1701,6 +1822,30 @@ function GoalDetail({
                         </span>
                       </span>
                       <ChevronRight className="h-4 w-4 shrink-0 text-amber-700" />
+                    </button>
+                  ) : canDecompose ? (
+                    <button
+                      className="mb-3 flex w-full items-center justify-between gap-4 rounded-md border border-cyan-300 bg-cyan-50 px-4 py-3 text-left hover:border-cyan-700 disabled:cursor-wait disabled:opacity-70"
+                      disabled={decompositionStarting}
+                      onClick={() => void onStartDecomposition(goal.id)}
+                      type="button"
+                    >
+                      <span>
+                        <span className="flex items-center gap-2 text-xs font-semibold text-cyan-950">
+                          {decompositionStarting ? (
+                            <LoaderCircle className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <WiseStepMark startable />
+                          )}
+                          {decompositionStarting
+                            ? "正在推演拆解"
+                            : "用 WISESTEP 拆解"}
+                        </span>
+                        <span className="mt-1 block text-[10px] leading-5 text-cyan-800">
+                          先生成候选下级 Goal，确认后才写入正式图谱。
+                        </span>
+                      </span>
+                      <ChevronRight className="h-4 w-4 shrink-0 text-cyan-700" />
                     </button>
                   ) : null}
                   <div className="rounded-lg border border-dashed border-slate-300 bg-white p-5 text-center text-xs text-slate-500">

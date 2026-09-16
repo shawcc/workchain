@@ -1,8 +1,12 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { z } from "zod";
-import type { CreateGoalInput } from "../src/data/stepwise-model.js";
+import type {
+  CreateGoalInput,
+  DecompositionDraft,
+} from "../src/data/stepwise-model.js";
 import {
   confirmWorkspaceDecomposition,
+  createWorkspaceDecomposition,
   createWorkspaceGoal,
   getWorkspaceSnapshot,
   importWorkspaceSnapshot,
@@ -16,11 +20,52 @@ import {
   workspacePersistenceMode,
 } from "./_workspace-persistence.js";
 
+const decompositionDraftSchema = z
+  .object({
+    question: z.string().min(1).max(500),
+    logic: z.string().min(1).max(3000),
+    completeness: z.string().min(1).max(3000),
+    boundaryRules: z.array(z.string().min(1).max(500)).max(6),
+    alternatives: z
+      .array(
+        z
+          .object({
+            title: z.string().min(1).max(240),
+            decision: z.enum(["merged", "rejected"]),
+            rationale: z.string().min(1).max(1000),
+          })
+          .strict(),
+      )
+      .max(5),
+    openQuestions: z.array(z.string().min(1).max(500)).max(5),
+    proposedGoals: z
+      .array(
+        z
+          .object({
+            title: z.string().min(1).max(160),
+            intent: z.string().min(1).max(1000),
+            successCriteria: z.array(z.string().min(1).max(500)).min(1).max(6),
+            constraints: z.array(z.string().min(1).max(500)).max(6),
+          })
+          .strict(),
+      )
+      .min(2)
+      .max(5),
+  })
+  .strict();
+
 const workspaceCommandSchema = z.discriminatedUnion("command", [
   z
     .object({
       command: z.literal("import"),
       snapshot: z.unknown(),
+    })
+    .strict(),
+  z
+    .object({
+      command: z.literal("create-decomposition"),
+      goalId: z.string().min(1).max(80),
+      draft: decompositionDraftSchema,
     })
     .strict(),
   z
@@ -126,6 +171,11 @@ export async function handleWorkspaceRequest(
         ? importWorkspaceSnapshot(command.snapshot)
         : command.command === "create-goal"
           ? createWorkspaceGoal(command.goal as CreateGoalInput)
+          : command.command === "create-decomposition"
+            ? createWorkspaceDecomposition(
+                command.goalId,
+                command.draft as DecompositionDraft,
+              )
           : command.command === "update-action"
             ? updateWorkspaceAction(command.action)
             : command.command === "update-relation"

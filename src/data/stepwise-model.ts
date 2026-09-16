@@ -106,6 +106,25 @@ export type DecompositionAlternative = {
   rationale: string;
 };
 
+export type DecompositionDraft = {
+  question: string;
+  logic: string;
+  completeness: string;
+  boundaryRules: string[];
+  alternatives: Array<
+    Omit<DecompositionAlternative, "decision"> & {
+      decision: "merged" | "rejected";
+    }
+  >;
+  openQuestions: string[];
+  proposedGoals: Array<{
+    title: string;
+    intent: string;
+    successCriteria: string[];
+    constraints: string[];
+  }>;
+};
+
 export type ProposedGoal = Omit<
   Goal,
   "id" | "level" | "parentId" | "status"

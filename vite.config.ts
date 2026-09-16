@@ -3,7 +3,11 @@ import { defineConfig, loadEnv, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import tsconfigPaths from "vite-tsconfig-paths";
 import { traeBadgePlugin } from 'vite-plugin-trae-solo-badge';
-import { runAgent, runExecutionAgent } from "./api/_agent-core";
+import {
+  runAgent,
+  runDecompositionAgent,
+  runExecutionAgent,
+} from "./api/_agent-core";
 import { handleMcpRequest } from "./api/_mcp-http";
 import { handleWorkspaceRequest } from "./api/_workspace-http";
 
@@ -58,7 +62,14 @@ function localAgentApi(environment: Record<string, string>): Plugin {
         }
 
         try {
-          const result = await runAgent(await readJsonBody(request), agentEnvironment);
+          const body = await readJsonBody(request);
+          const result =
+            body &&
+            typeof body === "object" &&
+            "kind" in body &&
+            body.kind === "decomposition"
+              ? await runDecompositionAgent(body, agentEnvironment)
+              : await runAgent(body, agentEnvironment);
           response.statusCode = 200;
           response.end(JSON.stringify(result));
         } catch (error) {
