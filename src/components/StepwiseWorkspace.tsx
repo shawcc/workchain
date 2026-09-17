@@ -51,6 +51,7 @@ import {
   type ServerWorkspaceSnapshot,
 } from "@/lib/stepwise-workspace-api";
 import {
+  requestAgentProposal,
   requestDecompositionAgent,
   requestExecutionAgent,
 } from "@/lib/workgraph-agent";
@@ -161,7 +162,106 @@ function getGoalChildren(
   goalId: string,
   goalRecords: Record<string, Goal>,
 ): Goal[] {
-  return Object.values(goalRecords).filter((goal) => goal.parentId === goalId);
+  return Object.values(goalRecords)
+    .filter((goal) => goal.parentId === goalId)
+    .sort((left, right) => compareGoalIds(left.id, right.id));
+}
+
+function compareGoalIds(left: string, right: string): number {
+  const leftNumber = Number(/^G(\d+)$/.exec(left)?.[1]);
+  const rightNumber = Number(/^G(\d+)$/.exec(right)?.[1]);
+  if (Number.isFinite(leftNumber) && Number.isFinite(rightNumber)) {
+    return leftNumber - rightNumber;
+  }
+  return left.localeCompare(right);
+}
+
+function getGoalDisplayId(
+  goalId: string,
+  goalRecords: Record<string, Goal>,
+): string {
+  const path = getGoalPath(goalId, goalRecords);
+  const root = path[0];
+  if (!root || path.length === 1) return goalId;
+
+  let displayId = root.id === "G0" ? "G" : root.id;
+  path.slice(1).forEach((goal) => {
+    const parentId = goal.parentId;
+    if (!parentId) return;
+    const siblingIndex = getGoalChildren(parentId, goalRecords).findIndex(
+      (sibling) => sibling.id === goal.id,
+    );
+    displayId += String(Math.max(0, siblingIndex) + 1);
+  });
+  return displayId;
+}
+
+function getProposedGoalDisplayId(
+  parentGoalId: string,
+  index: number,
+  goalRecords: Record<string, Goal>,
+): string {
+  const parentDisplayId = getGoalDisplayId(parentGoalId, goalRecords);
+  return `${parentDisplayId === "G0" ? "G" : parentDisplayId}${index + 1}`;
+}
+
+function buildGoalTreeLayout(
+  rootGoalId: string,
+  goalRecords: Record<string, Goal>,
+  minimumCanvasWidth: number,
+): { canvasWidth: number; positions: Record<string, NodePosition> } {
+  const horizontalGap = 40;
+  const subtreeWidths = new globalThis.Map<string, number>();
+
+  const nodeWidth = (goal: Goal) => (goal.level === 0 ? 340 : 250);
+  const measure = (goalId: string): number => {
+    const cached = subtreeWidths.get(goalId);
+    if (cached) return cached;
+    const goal = goalRecords[goalId];
+    if (!goal) return 0;
+    const children = getGoalChildren(goalId, goalRecords);
+    const childrenWidth = children.length
+      ? children.reduce((total, child) => total + measure(child.id), 0) +
+        horizontalGap * (children.length - 1)
+      : 0;
+    const width = Math.max(nodeWidth(goal), childrenWidth);
+    subtreeWidths.set(goalId, width);
+    return width;
+  };
+
+  const treeWidth = measure(rootGoalId);
+  const canvasWidth = Math.max(minimumCanvasWidth, treeWidth + 160);
+  const positions: Record<string, NodePosition> = {};
+
+  const place = (goalId: string, subtreeLeft: number, depth: number) => {
+    const goal = goalRecords[goalId];
+    if (!goal) return;
+    const subtreeWidth = subtreeWidths.get(goalId) ?? nodeWidth(goal);
+    const width = nodeWidth(goal);
+    positions[goalId] = {
+      x: subtreeLeft + (subtreeWidth - width) / 2,
+      y: 44 + depth * 274,
+      width,
+      height: goal.level === 0 ? 148 : 158,
+    };
+
+    const children = getGoalChildren(goalId, goalRecords);
+    if (!children.length) return;
+    const childrenWidth =
+      children.reduce(
+        (total, child) => total + (subtreeWidths.get(child.id) ?? 0),
+        0,
+      ) +
+      horizontalGap * (children.length - 1);
+    let childLeft = subtreeLeft + (subtreeWidth - childrenWidth) / 2;
+    children.forEach((child) => {
+      place(child.id, childLeft, depth + 1);
+      childLeft += (subtreeWidths.get(child.id) ?? 0) + horizontalGap;
+    });
+  };
+
+  place(rootGoalId, (canvasWidth - treeWidth) / 2, 0);
+  return { canvasWidth, positions };
 }
 
 function canStartDecomposition(
@@ -557,6 +657,7 @@ export function StepwiseWorkspace() {
         {selectedDecomposition ? (
           <DecompositionPanel
             goalRecords={goalRecords}
+            key={selectedDecomposition.id}
             onClose={() => setSelectedDecompositionGoalId(null)}
             onConfirm={async (review) => {
               await commitWorkspace(() =>
@@ -583,8 +684,13 @@ export function StepwiseWorkspace() {
             decompositionStartError?.goalId ===
               selectedDecompositionGoalId) ? (
           <DecompositionWorkingPanel
+            displayId={getGoalDisplayId(
+              selectedDecompositionGoalId,
+              goalRecords,
+            )}
             error={decompositionStartError?.message ?? null}
             goal={goalRecords[selectedDecompositionGoalId]}
+            key={selectedDecompositionGoalId}
             onClose={() => setSelectedDecompositionGoalId(null)}
             onGoal={(id) => {
               setSelectedDecompositionGoalId(null);
@@ -1069,7 +1175,10 @@ function WorkMap({
     : new Set<string>();
   const visibleGoals = Object.values(goalRecords)
     .filter((goal) => projectGoalIds.has(goal.id))
-    .sort((left, right) => left.level - right.level || left.id.localeCompare(right.id));
+    .sort(
+      (left, right) =>
+        left.level - right.level || compareGoalIds(left.id, right.id),
+    );
   const visibleActions = actions.filter((action) =>
     projectGoalIds.has(action.goalId),
   );
@@ -1079,39 +1188,26 @@ function WorkMap({
     levelGroups.set(level, [...(levelGroups.get(level) ?? []), goal]);
   });
   const levels = [...levelGroups.keys()].sort((left, right) => left - right);
-  const maxGoalCount = Math.max(
-    1,
-    ...[...levelGroups.values()].map((goalsAtLevel) => goalsAtLevel.length),
-  );
   const actionColumns = Math.min(Math.max(visibleActions.length, 1), 5);
-  const canvasWidth = Math.max(
-    1200,
-    80 + maxGoalCount * 290,
-    80 + actionColumns * 230,
-  );
   const useDemoLayout = activeRootGoalId === "G0";
-  const computedGoalPositions = Object.fromEntries(
-    visibleGoals.map((goal) => {
-      if (useDemoLayout && goalPositions[goal.id]) {
-        return [goal.id, goalPositions[goal.id]];
-      }
-      const goalsAtLevel = levelGroups.get(goal.level) ?? [];
-      const width = goal.level === 0 ? 340 : 250;
-      const gap = 40;
-      const rowWidth = goalsAtLevel.length * width + (goalsAtLevel.length - 1) * gap;
-      const index = goalsAtLevel.findIndex((item) => item.id === goal.id);
-      const relativeLevel = levels.indexOf(goal.level);
-      return [
-        goal.id,
-        {
-          x: (canvasWidth - rowWidth) / 2 + index * (width + gap),
-          y: 44 + relativeLevel * 274,
-          width,
-          height: goal.level === 0 ? 148 : 158,
-        },
-      ];
-    }),
-  ) as Record<string, NodePosition>;
+  const minimumCanvasWidth = Math.max(1200, 80 + actionColumns * 230);
+  const treeLayout =
+    activeRootGoalId && !useDemoLayout
+      ? buildGoalTreeLayout(
+          activeRootGoalId,
+          goalRecords,
+          minimumCanvasWidth,
+        )
+      : null;
+  const canvasWidth = treeLayout?.canvasWidth ?? minimumCanvasWidth;
+  const computedGoalPositions = useDemoLayout
+    ? (Object.fromEntries(
+        visibleGoals.map((goal) => [
+          goal.id,
+          goalPositions[goal.id],
+        ]),
+      ) as Record<string, NodePosition>)
+    : (treeLayout?.positions ?? {});
   const deepestGoalBottom = Math.max(
     192,
     ...Object.values(computedGoalPositions).map(
@@ -1356,9 +1452,10 @@ function WorkMap({
             const goalPosition = computedGoalPositions[goal.id];
             if (!goalPosition) return null;
             const starting = startingDecompositionGoalId === goal.id;
+            const displayId = getGoalDisplayId(goal.id, goalRecords);
             const label = review
-              ? `查看 ${goal.title} 的 WISESTEP 拆解讨论`
-              : `用 WISESTEP 拆解 ${goal.title}`;
+              ? `打开 ${displayId} 的独立 WISESTEP 线程`
+              : `为 ${displayId} 新建独立 WISESTEP 线程`;
             return (
               <button
                 aria-label={label}
@@ -1379,7 +1476,11 @@ function WorkMap({
                   left: goalPosition.x + goalPosition.width / 2,
                   top: goalPosition.y + goalPosition.height - 18,
                 }}
-                title={review ? "查看 WISESTEP 拆解讨论" : "发起 WISESTEP 拆解"}
+                title={
+                  review
+                    ? `${displayId} · 打开独立 WISESTEP 线程`
+                    : `${displayId} · 新建独立 WISESTEP 线程`
+                }
                 type="button"
               >
                 <WiseStepMark
@@ -1395,6 +1496,7 @@ function WorkMap({
             <GoalMapNode
               goal={goal}
               goalRecords={goalRecords}
+              displayId={getGoalDisplayId(goal.id, goalRecords)}
               focused={focusedGoalId === goal.id}
               key={goal.id}
               onClick={() => onGoal(goal.id)}
@@ -1545,12 +1647,14 @@ function MapLegend({ showActions }: { showActions: boolean }) {
 }
 
 function GoalMapNode({
+  displayId,
   focused,
   goal,
   goalRecords,
   onClick,
   position,
 }: {
+  displayId: string;
   focused: boolean;
   goal: Goal;
   goalRecords: Record<string, Goal>;
@@ -1580,7 +1684,7 @@ function GoalMapNode({
       <span className="block px-4 pb-3 pt-3">
         <span className="flex items-center justify-between gap-2">
           <span className="font-mono text-[9px] font-bold text-cyan-700">
-            {goal.id}
+            {displayId}
           </span>
           <StatusBadge meta={goalStatusMeta[goal.status]} />
         </span>
@@ -1798,7 +1902,7 @@ function GoalDetail({
                     {children.map((child) => (
                       <NodeLink
                         key={child.id}
-                        meta={`${child.id} · ${goalStatusMeta[child.status].label}`}
+                        meta={`${getGoalDisplayId(child.id, goalRecords)} · ${goalStatusMeta[child.status].label}`}
                         onClick={() => onGoal(child.id)}
                         title={child.title}
                       />
@@ -1895,7 +1999,10 @@ function GoalDetail({
 
           <aside className="min-w-0 space-y-4">
             <DetailAside title="治理">
-              <Fact label="Goal ID" value={goal.id} />
+              <Fact
+                label="Goal ID"
+                value={getGoalDisplayId(goal.id, goalRecords)}
+              />
               <Fact label="Human DRI" value={actorLabel(goal.dri)} />
               <Fact label="授权边界" value={goal.autonomy} />
             </DetailAside>
@@ -2050,7 +2157,7 @@ function ActionDetail({
                 onClick={() => onGoal(goal.id)}
                 type="button"
               >
-                属于 {goal.id} · {goal.title}
+                属于 {getGoalDisplayId(goal.id, goalRecords)} · {goal.title}
                 <ChevronRight className="h-3.5 w-3.5" />
               </button>
             </div>
@@ -2227,7 +2334,7 @@ function DocumentBreadcrumb({
           <ChevronRight className="h-3 w-3 text-slate-300" />
           {item.id === currentId ? (
             <span className="text-slate-950" title={item.title}>
-              {item.id}
+              {getGoalDisplayId(item.id, goalRecords)}
             </span>
           ) : (
             <button
@@ -2236,7 +2343,7 @@ function DocumentBreadcrumb({
               title={item.title}
               type="button"
             >
-              {item.id}
+              {getGoalDisplayId(item.id, goalRecords)}
             </button>
           )}
         </span>
@@ -2318,10 +2425,6 @@ function GoalReasoningChain({
   const ownReview = decompositionReviews.find(
     (review) => review.goalId === goal.id,
   );
-  const parentReview = goal.parentId
-    ? decompositionReviews.find((review) => review.goalId === goal.parentId)
-    : undefined;
-  const review = ownReview ?? parentReview;
   const origin = goal.parentId
     ? relations.find(
         (relation) =>
@@ -2332,7 +2435,7 @@ function GoalReasoningChain({
     : undefined;
 
   const sourceItems: WiseStepItem[] = [];
-  if (!ownReview && origin) {
+  if (origin) {
     sourceItems.push({
       id: `${origin.id}-rationale`,
       actor: origin.createdBy,
@@ -2340,9 +2443,9 @@ function GoalReasoningChain({
       content: origin.rationale,
     });
   }
-  if (review) {
+  if (ownReview) {
     sourceItems.push(
-      ...review.events.map((event) => ({
+      ...ownReview.events.map((event) => ({
         id: event.id,
         actor: event.actor,
         stage:
@@ -2368,7 +2471,7 @@ function GoalReasoningChain({
   return (
     <WiseStepChain
       items={items}
-      onOpen={review ? () => onOpen(review.goalId) : undefined}
+      onOpen={ownReview ? () => onOpen(ownReview.goalId) : undefined}
     />
   );
 }
@@ -2523,12 +2626,14 @@ function RelationList({
 }
 
 function DecompositionWorkingPanel({
+  displayId,
   error,
   goal,
   onClose,
   onGoal,
   onRetry,
 }: {
+  displayId: string;
   error: string | null;
   goal: Goal;
   onClose: () => void;
@@ -2567,7 +2672,7 @@ function DecompositionWorkingPanel({
             </span>
           </div>
           <h2 className="mt-2 text-base font-semibold text-slate-950">
-            {error ? "推演未完成" : `正在拆解「${goal.title}」`}
+            {error ? `${displayId} 推演未完成` : `${displayId} 正在推演`}
           </h2>
         </div>
         <button
@@ -2587,7 +2692,7 @@ function DecompositionWorkingPanel({
           type="button"
         >
           <span className="font-mono text-[9px] font-bold text-cyan-700">
-            {goal.id} · 待拆 Goal
+            {displayId} · 独立线程
           </span>
           <span className="mt-1 block text-sm font-semibold text-slate-900">
             {goal.title}
@@ -2716,28 +2821,93 @@ function DecompositionPanel({
   review: DecompositionReview;
 }) {
   const [message, setMessage] = useState("");
+  const [messageError, setMessageError] = useState<string | null>(null);
+  const [sendingMessage, setSendingMessage] = useState(false);
   const parent = goalRecords[review.goalId];
+  const displayId = getGoalDisplayId(review.goalId, goalRecords);
   const decompositionCount =
     review.status === "proposed"
       ? review.proposedGoals.length
       : review.childGoalIds.length;
 
   const submitMessage = async () => {
-    if (!message.trim()) return;
-    await onUpdate({
-      ...review,
-      events: [
-        ...review.events,
-        {
-          id: `${review.id}-${Date.now()}`,
-          actor: "Human DRI",
-          type: "proposal",
-          content: message.trim(),
-          createdAt: new Date().toISOString(),
+    const instruction = message.trim();
+    if (!instruction || sendingMessage) return;
+
+    setSendingMessage(true);
+    setMessageError(null);
+    try {
+      const response = await requestAgentProposal({
+        goal: {
+          id: displayId,
+          title: parent.title,
+          problem: parent.intent,
+          objective: parent.intent,
+          acceptance: parent.successCriteria.join("\n"),
+          dri: actorLabel(parent.dri),
+          reasoningAgent: actors.reasoning.name,
+          executionAgents: [],
+          autonomy: parent.autonomy,
+          parent: parent.parentId
+            ? getGoalDisplayId(parent.parentId, goalRecords)
+            : undefined,
+          children: getGoalChildren(parent.id, goalRecords).map((goal) => ({
+            id: getGoalDisplayId(goal.id, goalRecords),
+            title: goal.title,
+          })),
         },
-      ],
-    });
-    setMessage("");
+        stage:
+          review.status === "confirmed"
+            ? "已确认拆解的独立修订讨论"
+            : "待确认拆解 Proposal 的独立审查",
+        method: {
+          name: "WISESTEP",
+          summary: review.logic,
+          checks: review.boundaryRules,
+        },
+        currentDraft: JSON.stringify({
+          question: review.question,
+          logic: review.logic,
+          completeness: review.completeness,
+          proposedGoals: review.proposedGoals,
+          confirmedChildGoalIds: review.childGoalIds.map((goalId) =>
+            getGoalDisplayId(goalId, goalRecords),
+          ),
+        }),
+        instruction,
+      });
+      const now = new Date().toISOString();
+      const questions = response.questions.length
+        ? `\n待确认：${response.questions.join("；")}`
+        : "";
+      await onUpdate({
+        ...review,
+        events: [
+          ...review.events,
+          {
+            id: `${review.id}-${Date.now()}-HUMAN`,
+            actor: actorLabel(parent.dri),
+            type: "proposal",
+            content: instruction,
+            createdAt: now,
+          },
+          {
+            id: `${review.id}-${Date.now()}-AGENT`,
+            actor: `${actors.reasoning.name} · ${actors.reasoning.version ?? "current"}`,
+            type: "analysis",
+            content: `${response.proposedDraft}\n${response.rationale}${questions}`,
+            createdAt: now,
+          },
+        ],
+      });
+      setMessage("");
+    } catch (error) {
+      setMessageError(
+        error instanceof Error ? error.message : "WISESTEP 回复失败",
+      );
+    } finally {
+      setSendingMessage(false);
+    }
   };
 
   return (
@@ -2747,10 +2917,10 @@ function DecompositionPanel({
           <div className="flex items-center gap-2">
             <WiseStepMark pending={review.status === "proposed"} />
             <span className="text-[10px] font-semibold tracking-[0.12em] text-cyan-800">
-              WISESTEP
+              WISESTEP · {displayId}
             </span>
             <span className="font-mono text-[9px] text-slate-400">
-              {review.id}
+              THREAD {review.id}
             </span>
           </div>
           <h2 className="mt-2 text-base font-semibold text-slate-950">
@@ -2774,7 +2944,7 @@ function DecompositionPanel({
           type="button"
         >
           <span className="font-mono text-[9px] font-bold text-cyan-700">
-            {parent.id} · 父 Goal
+            {displayId} · 独立线程
           </span>
           <span className="mt-1 block text-sm font-semibold text-slate-900">
             {parent.title}
@@ -2787,6 +2957,26 @@ function DecompositionPanel({
           </span>
           <p className="text-xs leading-5 text-slate-700">
             从这个上级 Goal 拆成 {decompositionCount} 个职责清晰、可分别验收的下级 Goal。
+          </p>
+        </div>
+
+        <div
+          className={`mt-3 border px-3 py-2.5 ${
+            review.status === "confirmed"
+              ? "border-emerald-200 bg-emerald-50"
+              : "border-amber-200 bg-amber-50"
+          }`}
+        >
+          <p
+            className={`text-[10px] leading-5 ${
+              review.status === "confirmed"
+                ? "text-emerald-800"
+                : "text-amber-800"
+            }`}
+          >
+            {review.status === "confirmed"
+              ? `这是 ${displayId} 的已确认线程。继续讨论会获得 Agent 回复并保留在本线程，但不会自动删除或重建下级 Goal。`
+              : `这是 ${displayId} 的待确认线程。讨论和候选仅属于这个 Goal，确认前不会写入正式图谱。`}
           </p>
         </div>
 
@@ -2825,7 +3015,12 @@ function DecompositionPanel({
                     <div className="min-w-0">
                       <div className="flex items-center justify-between gap-2">
                         <span className="font-mono text-[9px] font-bold text-amber-800">
-                          {proposal.proposedId} · PROPOSED
+                          {getProposedGoalDisplayId(
+                            parent.id,
+                            index,
+                            goalRecords,
+                          )}{" "}
+                          · PROPOSED
                         </span>
                         <Bot className="h-3.5 w-3.5 text-amber-700" />
                       </div>
@@ -2857,7 +3052,7 @@ function DecompositionPanel({
                     </span>
                     <span className="min-w-0">
                       <span className="font-mono text-[9px] font-bold text-cyan-700">
-                        {goalId}
+                        {getGoalDisplayId(goalId, goalRecords)}
                       </span>
                       <span className="mt-1 block text-xs font-semibold text-slate-900">
                         {goalRecords[goalId].title}
@@ -2966,8 +3161,8 @@ function DecompositionPanel({
             </button>
           </div>
         ) : null}
-        <label className="text-[9px] font-semibold uppercase text-slate-400">
-          继续推演这组拆解
+        <label className="text-[9px] font-semibold uppercase text-slate-500">
+          与 {displayId} 的 WISESTEP 继续讨论
           <span className="mt-1.5 flex items-center gap-2">
             <textarea
               className="min-h-16 flex-1 resize-none rounded-md border border-slate-300 bg-white px-3 py-2 text-xs leading-5 text-slate-700 outline-none focus:border-cyan-600 focus:ring-2 focus:ring-cyan-100"
@@ -2978,14 +3173,28 @@ function DecompositionPanel({
             <button
               aria-label="提交拆解方案推演"
               className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-cyan-700 text-white hover:bg-cyan-800 disabled:opacity-40"
-              disabled={!message.trim()}
+              disabled={!message.trim() || sendingMessage}
               onClick={() => void submitMessage().catch(() => undefined)}
               type="button"
             >
-              <Send className="h-4 w-4" />
+              {sendingMessage ? (
+                <LoaderCircle className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
             </button>
           </span>
         </label>
+        <p className="mt-2 text-[10px] leading-4 text-slate-500">
+          {review.status === "confirmed"
+            ? "重新拆解会先作为修订建议留在本线程；当前图谱保持不变。"
+            : "Agent 回复不会静默改写候选；确认写入仍以当前 Proposal 为准。"}
+        </p>
+        {messageError ? (
+          <p className="mt-2 text-[10px] leading-4 text-rose-700">
+            {messageError}
+          </p>
+        ) : null}
       </footer>
     </aside>
   );

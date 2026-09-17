@@ -268,11 +268,15 @@ function reservedGoalIds(store: StepwiseStore): string[] {
 }
 
 function nextGoalId(store: StepwiseStore): string {
-  const max = reservedGoalIds(store).reduce((current, id) => {
-    const match = /^G(\d+)$/.exec(id);
+  const reserved = new Set(reservedGoalIds(store));
+  const max = Object.values(store.goals).reduce((current, goal) => {
+    if (goal.level !== 0) return current;
+    const match = /^G(\d+)$/.exec(goal.id);
     return match ? Math.max(current, Number(match[1])) : current;
   }, 0);
-  return `G${max + 1}`;
+  let sequence = max + 1;
+  while (reserved.has(`G${sequence}`)) sequence += 1;
+  return `G${sequence}`;
 }
 
 function nextDecompositionId(reviews: DecompositionReview[]): string {
@@ -283,12 +287,29 @@ function nextDecompositionId(reviews: DecompositionReview[]): string {
   return `D${max + 1}`;
 }
 
-function nextProposedGoalIds(store: StepwiseStore, count: number): string[] {
-  const max = reservedGoalIds(store).reduce((current, id) => {
-    const match = /^G(\d+)$/.exec(id);
-    return match ? Math.max(current, Number(match[1])) : current;
-  }, 0);
-  return Array.from({ length: count }, (_, index) => `G${max + index + 1}`);
+function nextProposedGoalIds(
+  store: StepwiseStore,
+  parentId: string,
+  count: number,
+): string[] {
+  const match = /^G(\d+)$/.exec(parentId);
+  if (!match) throw new Error(`Goal ${parentId} 编号格式无效。`);
+
+  const parentSequence = match[1];
+  const prefix = parentSequence === "0" ? "G" : `G${parentSequence}`;
+  const reserved = new Set(reservedGoalIds(store));
+  const ids: string[] = [];
+  let sequence = 1;
+
+  while (ids.length < count) {
+    const candidate = `${prefix}${sequence}`;
+    if (!reserved.has(candidate)) {
+      ids.push(candidate);
+      reserved.add(candidate);
+    }
+    sequence += 1;
+  }
+  return ids;
 }
 
 export function getWorkspaceSnapshot(): StepwiseWorkspaceSnapshot {
@@ -382,6 +403,7 @@ export function createWorkspaceDecomposition(
 
   const proposedIds = nextProposedGoalIds(
     store,
+    parent.id,
     draft.proposedGoals.length,
   );
   const id = nextDecompositionId(store.decompositionReviews);

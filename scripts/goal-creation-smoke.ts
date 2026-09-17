@@ -67,6 +67,10 @@ const review = proposed.decompositionReviews.find(
 assert(review);
 assert.equal(review.status, "proposed");
 assert.equal(review.proposedGoals.length, 2);
+assert.deepEqual(
+  review.proposedGoals.map((goal) => goal.proposedId),
+  [`${newGoals[0].id}1`, `${newGoals[0].id}2`],
+);
 assert.equal(Object.keys(proposed.goals).length, Object.keys(created.goals).length);
 assert.equal(review.proposedGoals[0].dri.id, newGoals[0].dri.id);
 assert.equal(review.proposedGoals[0].autonomy, newGoals[0].autonomy);
