@@ -281,6 +281,10 @@ export function StepwiseWorkspace() {
   const [focusedGoalId, setFocusedGoalId] = useState<string | null>(null);
   const [decompositionStartingGoalId, setDecompositionStartingGoalId] =
     useState<string | null>(null);
+  const [decompositionStartError, setDecompositionStartError] = useState<{
+    goalId: string;
+    message: string;
+  } | null>(null);
   const [workspaceNotice, setWorkspaceNotice] = useState<string | null>(null);
   const [workspaceSyncing, setWorkspaceSyncing] = useState(true);
   const [workspaceError, setWorkspaceError] = useState<string | null>(null);
@@ -388,6 +392,7 @@ export function StepwiseWorkspace() {
     setFocusedGoalId(rootGoalId);
     setSelection(null);
     setSelectedDecompositionGoalId(null);
+    setDecompositionStartError(null);
     setSelectedRelationId(null);
   };
   const openGoal = (id: string) => {
@@ -420,6 +425,9 @@ export function StepwiseWorkspace() {
     }
 
     setDecompositionStartingGoalId(goalId);
+    setSelectedRelationId(null);
+    setSelectedDecompositionGoalId(goalId);
+    setDecompositionStartError(null);
     setWorkspaceError(null);
     try {
       const draft = await requestDecompositionAgent(goal);
@@ -431,14 +439,13 @@ export function StepwiseWorkspace() {
           (review) => review.goalId === goalId,
         )
       ) {
-        setSelectedRelationId(null);
-        setSelectedDecompositionGoalId(goalId);
         setWorkspaceNotice("WISESTEP 拆解提案已生成，等待 DRI 确认");
       }
     } catch (error) {
-      setWorkspaceError(
-        error instanceof Error ? error.message : "WISESTEP 拆解失败",
-      );
+      const message =
+        error instanceof Error ? error.message : "WISESTEP 拆解失败";
+      setWorkspaceError(message);
+      setDecompositionStartError({ goalId, message });
     } finally {
       setDecompositionStartingGoalId(null);
     }
@@ -458,6 +465,7 @@ export function StepwiseWorkspace() {
         onMap={() => {
           setSelection(null);
           setSelectedDecompositionGoalId(null);
+          setDecompositionStartError(null);
           setSelectedRelationId(null);
         }}
         onRefresh={() => void commitWorkspace(fetchWorkspace)}
@@ -568,6 +576,23 @@ export function StepwiseWorkspace() {
               );
             }}
             review={selectedDecomposition}
+          />
+        ) : selectedDecompositionGoalId &&
+          goalRecords[selectedDecompositionGoalId] &&
+          (decompositionStartingGoalId === selectedDecompositionGoalId ||
+            decompositionStartError?.goalId ===
+              selectedDecompositionGoalId) ? (
+          <DecompositionWorkingPanel
+            error={decompositionStartError?.message ?? null}
+            goal={goalRecords[selectedDecompositionGoalId]}
+            onClose={() => setSelectedDecompositionGoalId(null)}
+            onGoal={(id) => {
+              setSelectedDecompositionGoalId(null);
+              openGoal(id);
+            }}
+            onRetry={() =>
+              void startDecomposition(selectedDecompositionGoalId)
+            }
           />
         ) : null}
 
@@ -2494,6 +2519,184 @@ function RelationList({
         </button>
       ))}
     </div>
+  );
+}
+
+function DecompositionWorkingPanel({
+  error,
+  goal,
+  onClose,
+  onGoal,
+  onRetry,
+}: {
+  error: string | null;
+  goal: Goal;
+  onClose: () => void;
+  onGoal: (id: string) => void;
+  onRetry: () => void;
+}) {
+  const checks = [
+    {
+      label: "结果边界",
+      detail: "从 Goal 意图识别可独立成立的下级结果。",
+    },
+    {
+      label: "验收覆盖",
+      detail: `用 ${goal.successCriteria.length} 条上级标准检查遗漏与重叠。`,
+    },
+    {
+      label: "治理约束",
+      detail: "继承 DRI、期限与授权边界，仅生成待确认 Proposal。",
+    },
+  ];
+
+  return (
+    <aside
+      aria-live="polite"
+      className="absolute inset-y-0 right-0 z-40 flex w-full max-w-xl flex-col border-l border-slate-300 bg-white shadow-2xl"
+    >
+      <header className="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-4">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <WiseStepMark loading={!error} />
+            <span className="text-[10px] font-semibold tracking-[0.12em] text-cyan-800">
+              WISESTEP
+            </span>
+            <span className="font-mono text-[9px] text-slate-400">
+              {error ? "PAUSED" : "WORKING"}
+            </span>
+          </div>
+          <h2 className="mt-2 text-base font-semibold text-slate-950">
+            {error ? "推演未完成" : `正在拆解「${goal.title}」`}
+          </h2>
+        </div>
+        <button
+          aria-label="关闭 Agent 工作区"
+          className="grid h-8 w-8 shrink-0 place-items-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-900"
+          onClick={onClose}
+          type="button"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </header>
+
+      <div className="min-h-0 flex-1 overflow-auto px-5 py-5">
+        <button
+          className="w-full rounded-md border border-slate-300 bg-slate-50 p-3 text-left hover:border-cyan-500"
+          onClick={() => onGoal(goal.id)}
+          type="button"
+        >
+          <span className="font-mono text-[9px] font-bold text-cyan-700">
+            {goal.id} · 待拆 Goal
+          </span>
+          <span className="mt-1 block text-sm font-semibold text-slate-900">
+            {goal.title}
+          </span>
+        </button>
+
+        <section className="mt-5">
+          <h3 className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
+            Agent 工作思路
+          </h3>
+          <div className="mt-3 flex items-start gap-3">
+            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-slate-950 text-cyan-300">
+              <Bot className="h-4 w-4" />
+            </span>
+            <div className="min-w-0 border-l-2 border-cyan-600 bg-cyan-50/60 px-3 py-2.5">
+              <p className="text-xs leading-5 text-slate-700">
+                我会从上级 Goal 的成功标准反推可分别验收的下级结果，再检查候选之间是否重叠、合起来是否完整。
+              </p>
+              <p className="mt-2 text-[10px] leading-4 text-cyan-800">
+                这里只展示可审查的方法与依据；完成后会给出正式 Proposal。
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section className="mt-6">
+          <h3 className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
+            本轮检查
+          </h3>
+          <div className="mt-3 divide-y divide-slate-200 border-y border-slate-200">
+            {checks.map((check, index) => (
+              <div
+                className="grid grid-cols-[24px_minmax(0,1fr)] gap-3 py-3"
+                key={check.label}
+              >
+                <span className="grid h-6 w-6 place-items-center rounded border border-cyan-200 bg-cyan-50 font-mono text-[9px] font-bold text-cyan-800">
+                  {String(index + 1).padStart(2, "0")}
+                </span>
+                <span>
+                  <span className="block text-xs font-semibold text-slate-800">
+                    {check.label}
+                  </span>
+                  <span className="mt-1 block text-[10px] leading-4 text-slate-500">
+                    {check.detail}
+                  </span>
+                </span>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="mt-6">
+          <h3 className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
+            已读取的验收标准
+          </h3>
+          <ul className="mt-3 space-y-2">
+            {goal.successCriteria.map((criterion) => (
+              <li
+                className="flex gap-2 text-xs leading-5 text-slate-600"
+                key={criterion}
+              >
+                <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-cyan-700" />
+                {criterion}
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        <div className="mt-6 flex gap-3 border-t border-slate-200 pt-4">
+          <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700" />
+          <p className="text-[10px] leading-5 text-slate-500">
+            Human DRI 确认前，不会创建下级 Goal 或 Relation。
+          </p>
+        </div>
+      </div>
+
+      <footer className="border-t border-slate-200 bg-slate-50 p-4">
+        {error ? (
+          <div className="flex items-center justify-between gap-4 rounded-md border border-rose-300 bg-rose-50 p-3">
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-rose-900">生成失败</p>
+              <p className="mt-1 break-words text-[10px] leading-4 text-rose-700">
+                {error}
+              </p>
+            </div>
+            <button
+              className="inline-flex h-9 shrink-0 items-center gap-2 rounded-md bg-slate-950 px-3 text-xs font-semibold text-white hover:bg-cyan-800"
+              onClick={onRetry}
+              type="button"
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+              重试
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-3">
+            <LoaderCircle className="h-4 w-4 shrink-0 animate-spin text-cyan-700" />
+            <div>
+              <p className="text-xs font-semibold text-slate-800">
+                正在形成拆解 Proposal
+              </p>
+              <p className="mt-1 text-[10px] leading-4 text-slate-500">
+                返回后将在这里继续审查，不会自动写入图谱。
+              </p>
+            </div>
+          </div>
+        )}
+      </footer>
+    </aside>
   );
 }
 
